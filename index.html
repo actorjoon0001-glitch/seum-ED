@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>세움디자인하우징 전시장 모델 취합 페이지</title>
+<style>
+  :root {
+    --brand: #2563eb;
+    --brand-dark: #1d4ed8;
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --danger: #dc2626;
+    --ok: #16a34a;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  header.page {
+    background: linear-gradient(135deg, var(--brand) 0%, #4f46e5 100%);
+    color: #fff;
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    margin-bottom: 22px;
+    box-shadow: 0 8px 24px rgba(37,99,235,.18);
+  }
+  header.page h1 { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
+  header.page p { margin: 0; opacity: .9; font-size: 14px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+
+  .field { margin-bottom: 20px; }
+  .field:last-child { margin-bottom: 0; }
+  label.q {
+    display: block;
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+  label.q .req { color: var(--danger); margin-left: 3px; }
+  .hint { font-size: 12.5px; color: var(--muted); margin: -4px 0 8px; }
+
+  input[type=text],
+  input[type=number],
+  select,
+  textarea {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 15px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--text);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+  }
+  .suffix-wrap { position: relative; }
+  .suffix-wrap .suffix {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    color: var(--muted); font-size: 14px; pointer-events: none;
+  }
+  .suffix-wrap input { padding-right: 44px; }
+
+  /* 선택형 (라디오) */
+  .choices { display: flex; gap: 10px; flex-wrap: wrap; }
+  .choice {
+    flex: 1 1 120px;
+    position: relative;
+  }
+  .choice input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+  .choice span {
+    display: block;
+    text-align: center;
+    padding: 13px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .15s;
+    user-select: none;
+  }
+  .choice input:checked + span {
+    border-color: var(--brand);
+    background: rgba(37,99,235,.07);
+    color: var(--brand-dark);
+    font-weight: 600;
+  }
+
+  /* 파일 업로드 */
+  .uploader {
+    border: 1.5px dashed var(--border);
+    border-radius: 10px;
+    padding: 22px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .15s;
+    background: #fafafa;
+  }
+  .uploader:hover { border-color: var(--brand); background: rgba(37,99,235,.04); }
+  .uploader .ic { font-size: 26px; }
+  .uploader .t { font-size: 14px; color: var(--muted); margin-top: 6px; }
+  .uploader input { display: none; }
+
+  .previews { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px,1fr)); gap: 8px; margin-top: 12px; }
+  .previews figure {
+    margin: 0; position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden;
+    border: 1px solid var(--border); background: #f3f4f6;
+  }
+  .previews img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .previews .del {
+    position: absolute; top: 4px; right: 4px;
+    width: 22px; height: 22px; border-radius: 50%; border: none;
+    background: rgba(0,0,0,.6); color: #fff; font-size: 14px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .submit-bar { position: sticky; bottom: 0; padding-top: 6px; }
+  button.submit {
+    width: 100%;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--brand);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(37,99,235,.28);
+    transition: background .15s, transform .05s;
+  }
+  button.submit:hover { background: var(--brand-dark); }
+  button.submit:active { transform: translateY(1px); }
+
+  /* 취합 목록 */
+  .list-head { display: flex; align-items: center; justify-content: space-between; margin: 30px 0 12px; }
+  .list-head h2 { font-size: 17px; margin: 0; }
+  .badge { background: var(--brand); color:#fff; border-radius: 20px; font-size: 12px; padding: 2px 10px; font-weight:600; }
+  .entry { font-size: 14px; }
+  .entry .meta { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+  .entry h3 { margin: 0 0 4px; font-size: 16px; }
+  .entry .type-tag { display:inline-block; background:#eef2ff; color:var(--brand-dark); font-size:12px; font-weight:600; padding:2px 9px; border-radius:6px; }
+  .entry .thumbs { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .entry .thumbs img { width:56px; height:56px; object-fit:cover; border-radius:6px; border:1px solid var(--border); }
+  .entry-actions { margin-top:12px; display:flex; gap:8px; }
+  .entry-actions button { font-size:13px; padding:7px 12px; border-radius:8px; border:1px solid var(--border); background:#fff; cursor:pointer; }
+  .entry-actions .del-entry { color: var(--danger); border-color:#fca5a5; }
+  .empty { text-align:center; color:var(--muted); padding:30px 0; font-size:14px; }
+
+  /* 토스트 */
+  #toast {
+    position: fixed; left: 50%; bottom: 28px;
+    transform: translateX(-50%) translateY(40px);
+    background: var(--ok); color:#fff; padding: 14px 22px; border-radius: 12px;
+    font-size: 14px; font-weight:600; box-shadow: 0 8px 24px rgba(0,0,0,.2);
+    opacity: 0; transition: all .3s; z-index: 100; pointer-events:none; max-width: 90%;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .err { border-color: var(--danger) !important; }
+  .err-msg { color: var(--danger); font-size: 12.5px; margin-top: 5px; display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <h1>세움디자인하우징 전시장 모델 취합 페이지</h1>
+    <p>전시장 팀장님들께서 보유 모델 정보를 입력해 주세요. 입력하신 자료로 상세페이지를 제작합니다.</p>
+  </header>
+
+  <form id="modelForm" novalidate>
+    <div class="card">
+
+      <div class="field">
+        <label class="q" for="hall">전시장 선택 <span class="req">*</span></label>
+        <select id="hall" name="hall" required>
+          <option value="">선택해 주세요</option>
+          <option>1전시장</option>
+          <option>2전시장</option>
+          <option>3전시장</option>
+          <option>4전시장</option>
+          <option>5전시장</option>
+        </select>
+        <div class="err-msg">전시장을 선택해 주세요.</div>
+      </div>
+
+      <div class="field">
+        <label class="q" for="manager">담당자 이름 <span class="req">*</span></label>
+        <input type="text" id="manager" name="manager" placeholder="예) 박초롱" required />
+        <div class="err-msg">담당자 이름을 입력해 주세요.</div>
+      </div>
+
+      <!-- 추가: 선택형 질문 - 주택 유형 -->
+      <div class="field">
+        <label class="q">주택 유형 <span class="req">*</span></label>
+        <div class="choices" id="houseType">
+          <label class="choice"><input type="radio" name="houseType" value="주택" required><span>주택</span></label>
+          <label class="choice"><input type="radio" name="houseType" value="쉼터"><span>쉼터</span></label>
+          <label class="choice"><input type="radio" name="houseType" value="기타"><span>기타</span></label>
+        </div>
+        <div class="err-msg">주택 유형을 선택해 주세요.</div>
+      </div>
+
+      <div class="field">
+        <label class="q" for="modelName">주택 모델명 <span class="req">*</span></label>
+        <input type="text" id="modelName" name="modelName" placeholder="예) 장군이네" required />
+        <div class="err-msg">주택 모델명을 입력해 주세요.</div>
+      </div>
+
+      <div class="field">
+        <label class="q" for="pyeong">주택 평형 <span class="req">*</span></label>
+        <div class="suffix-wrap">
+          <input type="number" id="pyeong" name="pyeong" placeholder="예) 30" min="0" step="0.1" required />
+          <span class="suffix">평</span>
+        </div>
+        <div class="err-msg">주택 평형을 입력해 주세요.</div>
+      </div>
+
+      <div class="field">
+        <label class="q" for="price">주택가격 <span class="req">*</span></label>
+        <input type="text" id="price" name="price" placeholder="예) 3억" required />
+        <div class="err-msg">주택가격을 입력해 주세요.</div>
+      </div>
+
+      <div class="field">
+        <label class="q">주택 외관사진</label>
+        <div class="hint">외관 사진을 여러 장 첨부할 수 있습니다.</div>
+        <label class="uploader" for="exterior">
+          <div class="ic">🏠</div>
+          <div class="t">탭하여 외관사진 첨부</div>
+          <input type="file" id="exterior" accept="image/*" multiple>
+        </label>
+        <div class="previews" id="exteriorPreviews"></div>
+      </div>
+
+      <div class="field">
+        <label class="q">주택 내부사진</label>
+        <div class="hint">내부 사진을 여러 장 첨부할 수 있습니다.</div>
+        <label class="uploader" for="interior">
+          <div class="ic">🛋️</div>
+          <div class="t">탭하여 내부사진 첨부</div>
+          <input type="file" id="interior" accept="image/*" multiple>
+        </label>
+        <div class="previews" id="interiorPreviews"></div>
+      </div>
+
+    </div>
+
+    <!-- 추가: 최하단 제출 버튼 -->
+    <div class="submit-bar">
+      <button type="submit" class="submit">주택 모델 추가 제출하기</button>
+    </div>
+  </form>
+
+  <!-- 취합 목록 (제출일시 자동 표기) -->
+  <div class="list-head">
+    <h2>취합된 모델</h2>
+    <span class="badge" id="count">0건</span>
+  </div>
+  <div id="entries"></div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "seum_models_v1";
+  var exteriorFiles = [];
+  var interiorFiles = [];
+
+  var form = document.getElementById("modelForm");
+  var toastEl = document.getElementById("toast");
+
+  /* ---------- 파일 → DataURL ---------- */
+  function readFile(file) {
+    return new Promise(function (resolve) {
+      var r = new FileReader();
+      r.onload = function () { resolve({ name: file.name, data: r.result }); };
+      r.readAsDataURL(file);
+    });
+  }
+
+  function setupUploader(inputId, previewId, store) {
+    var input = document.getElementById(inputId);
+    var preview = document.getElementById(previewId);
+
+    input.addEventListener("change", function () {
+      var files = Array.prototype.slice.call(input.files);
+      Promise.all(files.map(readFile)).then(function (results) {
+        results.forEach(function (f) { store.push(f); });
+        input.value = "";
+        renderPreviews(preview, store);
+      });
+    });
+  }
+
+  function renderPreviews(container, store) {
+    container.innerHTML = "";
+    store.forEach(function (f, idx) {
+      var fig = document.createElement("figure");
+      var img = document.createElement("img");
+      img.src = f.data;
+      img.alt = f.name;
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "del";
+      del.innerHTML = "&times;";
+      del.addEventListener("click", function () {
+        store.splice(idx, 1);
+        renderPreviews(container, store);
+      });
+      fig.appendChild(img);
+      fig.appendChild(del);
+      container.appendChild(fig);
+    });
+  }
+
+  setupUploader("exterior", "exteriorPreviews", exteriorFiles);
+  setupUploader("interior", "interiorPreviews", interiorFiles);
+
+  /* ---------- 저장소 ---------- */
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch (e) { return []; }
+  }
+  function save(list) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      return true;
+    } catch (e) {
+      // 용량 초과 등
+      return false;
+    }
+  }
+
+  /* ---------- 검증 ---------- */
+  function clearErrors() {
+    form.querySelectorAll(".err").forEach(function (el) { el.classList.remove("err"); });
+    form.querySelectorAll(".err-msg").forEach(function (el) { el.style.display = "none"; });
+  }
+  function showError(field) {
+    var wrap = field.closest(".field");
+    var control = wrap.querySelector("input, select, .choices");
+    if (control) control.classList.add("err");
+    var msg = wrap.querySelector(".err-msg");
+    if (msg) msg.style.display = "block";
+  }
+
+  function validate() {
+    clearErrors();
+    var ok = true;
+    var requiredIds = ["hall", "manager", "modelName", "pyeong", "price"];
+    requiredIds.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el.value.trim()) { showError(el); ok = false; }
+    });
+    var type = form.querySelector('input[name="houseType"]:checked');
+    if (!type) {
+      var typeWrap = document.getElementById("houseType").closest(".field");
+      document.getElementById("houseType").classList.add("err");
+      typeWrap.querySelector(".err-msg").style.display = "block";
+      ok = false;
+    }
+    return ok;
+  }
+
+  /* ---------- 알람(토스트 + 브라우저 알림) ---------- */
+  function notify(entry) {
+    var when = entry.submittedAtLabel;
+    toastEl.textContent = "✅ 제출 완료 · " + entry.modelName + " (" + when + ")";
+    toastEl.classList.add("show");
+    setTimeout(function () { toastEl.classList.remove("show"); }, 3500);
+
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") {
+        new Notification("새 모델 제출", { body: entry.hall + " · " + entry.modelName + "\n" + when });
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission();
+      }
+    }
+  }
+
+  /* ---------- 제출일시 포맷 ---------- */
+  function formatDate(d) {
+    function p(n) { return String(n).padStart(2, "0"); }
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) +
+           " " + p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+
+  /* ---------- 제출 ---------- */
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!validate()) {
+      var firstErr = form.querySelector(".err");
+      if (firstErr) firstErr.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    var now = new Date();
+    var entry = {
+      id: Date.now(),
+      hall: document.getElementById("hall").value,
+      manager: document.getElementById("manager").value.trim(),
+      houseType: form.querySelector('input[name="houseType"]:checked').value,
+      modelName: document.getElementById("modelName").value.trim(),
+      pyeong: document.getElementById("pyeong").value,
+      price: document.getElementById("price").value.trim(),
+      exterior: exteriorFiles.slice(),
+      interior: interiorFiles.slice(),
+      submittedAt: now.toISOString(),
+      submittedAtLabel: formatDate(now)
+    };
+
+    var list = load();
+    list.unshift(entry);
+    if (!save(list)) {
+      alert("저장 용량을 초과했습니다. 사진 수를 줄이거나 기존 제출 자료를 정리해 주세요.");
+      return;
+    }
+
+    notify(entry);
+
+    // 초기화
+    form.reset();
+    exteriorFiles.length = 0;
+    interiorFiles.length = 0;
+    renderPreviews(document.getElementById("exteriorPreviews"), exteriorFiles);
+    renderPreviews(document.getElementById("interiorPreviews"), interiorFiles);
+
+    renderEntries();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  /* ---------- 취합 목록 렌더 ---------- */
+  function renderEntries() {
+    var list = load();
+    var box = document.getElementById("entries");
+    document.getElementById("count").textContent = list.length + "건";
+    box.innerHTML = "";
+
+    if (!list.length) {
+      box.innerHTML = '<div class="card empty">아직 제출된 모델이 없습니다.</div>';
+      return;
+    }
+
+    list.forEach(function (entry) {
+      var card = document.createElement("div");
+      card.className = "card entry";
+
+      var thumbs = "";
+      var allImgs = (entry.exterior || []).concat(entry.interior || []);
+      allImgs.slice(0, 8).forEach(function (f) {
+        thumbs += '<img src="' + f.data + '" alt="">';
+      });
+      var more = allImgs.length > 8 ? "<span style='align-self:center;color:#6b7280;font-size:13px;'>+" + (allImgs.length - 8) + "</span>" : "";
+
+      card.innerHTML =
+        '<div class="meta">' +
+          '<span>🕒 ' + entry.submittedAtLabel + '</span>' +
+          '<span>📍 ' + entry.hall + '</span>' +
+          '<span>👤 ' + entry.manager + '</span>' +
+        '</div>' +
+        '<h3>' + escapeHtml(entry.modelName) + ' <span class="type-tag">' + entry.houseType + '</span></h3>' +
+        '<div style="color:#374151;font-size:14px;">' +
+          entry.pyeong + '평 · ' + escapeHtml(entry.price) +
+        '</div>' +
+        (thumbs ? '<div class="thumbs">' + thumbs + more + '</div>' : '') +
+        '<div class="entry-actions">' +
+          '<button type="button" class="del-entry" data-id="' + entry.id + '">삭제</button>' +
+        '</div>';
+
+      box.appendChild(card);
+    });
+
+    box.querySelectorAll(".del-entry").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (!confirm("이 제출 자료를 삭제할까요?")) return;
+        var id = Number(btn.getAttribute("data-id"));
+        save(load().filter(function (x) { return x.id !== id; }));
+        renderEntries();
+      });
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
+    });
+  }
+
+  renderEntries();
+})();
+</script>
+</body>
+</html>
