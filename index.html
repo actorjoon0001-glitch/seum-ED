@@ -112,6 +112,12 @@
 
   /* 파일 업로드 */
   .uploader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
     border: 1.5px dashed var(--border);
     border-radius: 10px;
     padding: 22px;
@@ -119,11 +125,22 @@
     cursor: pointer;
     transition: all .15s;
     background: #fafafa;
+    font-family: inherit;
+    color: inherit;
   }
   .uploader:hover { border-color: var(--brand); background: rgba(37,99,235,.04); }
-  .uploader .ic { font-size: 26px; }
-  .uploader .t { font-size: 14px; color: var(--muted); margin-top: 6px; }
-  .uploader input { display: none; }
+  .uploader .ic { font-size: 26px; line-height: 1; }
+  .uploader .t { font-size: 14px; color: var(--muted); }
+  /* 네이티브 파일 입력 완전 숨김 (브라우저 호환) */
+  .file-hidden {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 
   .previews { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px,1fr)); gap: 8px; margin-top: 12px; }
   .previews figure {
@@ -249,22 +266,22 @@
       <div class="field">
         <label class="q">주택 외관사진</label>
         <div class="hint">외관 사진을 여러 장 첨부할 수 있습니다.</div>
-        <label class="uploader" for="exterior">
-          <div class="ic">🏠</div>
-          <div class="t">탭하여 외관사진 첨부</div>
-          <input type="file" id="exterior" accept="image/*" multiple>
-        </label>
+        <button type="button" class="uploader" data-target="exterior">
+          <span class="ic">🏠</span>
+          <span class="t">탭하여 외관사진 첨부</span>
+        </button>
+        <input type="file" id="exterior" class="file-hidden" accept="image/*" multiple>
         <div class="previews" id="exteriorPreviews"></div>
       </div>
 
       <div class="field">
         <label class="q">주택 내부사진</label>
         <div class="hint">내부 사진을 여러 장 첨부할 수 있습니다.</div>
-        <label class="uploader" for="interior">
-          <div class="ic">🛋️</div>
-          <div class="t">탭하여 내부사진 첨부</div>
-          <input type="file" id="interior" accept="image/*" multiple>
-        </label>
+        <button type="button" class="uploader" data-target="interior">
+          <span class="ic">🛋️</span>
+          <span class="t">탭하여 내부사진 첨부</span>
+        </button>
+        <input type="file" id="interior" class="file-hidden" accept="image/*" multiple>
         <div class="previews" id="interiorPreviews"></div>
       </div>
 
@@ -310,6 +327,11 @@
   function setupUploader(inputId, previewId, store) {
     var input = document.getElementById(inputId);
     var preview = document.getElementById(previewId);
+    var btn = document.querySelector('.uploader[data-target="' + inputId + '"]');
+
+    if (btn) {
+      btn.addEventListener("click", function () { input.click(); });
+    }
 
     input.addEventListener("change", function () {
       var files = Array.prototype.slice.call(input.files);
