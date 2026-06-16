@@ -21,8 +21,10 @@
 - 최하단 **「주택 모델 추가 제출하기」** 버튼
 - **제출일시 자동 표기** — 제출 시각이 자동 기록되어 취합 목록에 표시됩니다.
 - **제출 시 알람** — 제출 완료 토스트 안내 + 브라우저 알림(권한 허용 시)
-- 제출 자료는 브라우저(localStorage)에 저장되어 「취합된 모델」 목록에서 확인·삭제할 수 있습니다.
+- 제출 자료는 Supabase에 저장되어 모든 사용자가 「취합된 모델」 목록에서 공유·확인할 수 있습니다.
 
-## 참고
-- 현재 버전은 백엔드 서버 없이 동작하며, 제출 데이터는 사용하는 브라우저에 저장됩니다.
-- 여러 팀장의 자료를 한 곳에서 모으거나 이메일/서버로 자동 전송이 필요하면 백엔드(또는 Google Forms/Tally 등) 연동을 추가할 수 있습니다.
+## Supabase 연동
+- 사진은 Supabase Storage(`house-photos` 버킷)에 업로드되고, 해당 public URL이 DB 테이블 `house_models`에 저장됩니다.
+- 테이블/버킷/권한 스키마는 `supabase/schema.sql` 참고 (Supabase SQL Editor에서 실행).
+- 설정 값은 `index.html` 상단 스크립트의 `SUPABASE_URL`, `SUPABASE_KEY`에 있습니다. (publishable key는 공개 가능하며 RLS로 보호됨)
+- 취합 목록 **삭제** 기능을 쓰려면 `schema.sql`의 delete 정책 주석을 해제해 실행하세요.

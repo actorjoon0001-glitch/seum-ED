@@ -304,22 +304,30 @@
 
 <div id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function () {
   "use strict";
 
-  var STORAGE_KEY = "seum_models_v1";
+  /* ---------- Supabase 설정 ---------- */
+  var SUPABASE_URL = "https://sgvjcqjhwsaqovcaadjl.supabase.co";
+  var SUPABASE_KEY = "sb_publishable_fQ5CfbGTMYxwF58hsqWeLQ_7iRt08K5";
+  var BUCKET = "house-photos";
+  var TABLE = "house_models";
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
   var exteriorFiles = [];
   var interiorFiles = [];
 
   var form = document.getElementById("modelForm");
   var toastEl = document.getElementById("toast");
+  var submitBtn = form.querySelector("button.submit");
 
-  /* ---------- 파일 → DataURL ---------- */
+  /* ---------- 파일 읽기 (미리보기용 DataURL + 원본 File 보관) ---------- */
   function readFile(file) {
     return new Promise(function (resolve) {
       var r = new FileReader();
-      r.onload = function () { resolve({ name: file.name, data: r.result }); };
+      r.onload = function () { resolve({ name: file.name, data: r.result, file: file }); };
       r.readAsDataURL(file);
     });
   }
@@ -367,19 +375,32 @@
   setupUploader("exterior", "exteriorPreviews", exteriorFiles);
   setupUploader("interior", "interiorPreviews", interiorFiles);
 
-  /* ---------- 저장소 ---------- */
-  function load() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-    catch (e) { return []; }
+  /* ---------- Supabase: 사진 업로드 → public URL 배열 ---------- */
+  function uploadPhotos(items, prefix) {
+    var tasks = items.map(function (item) {
+      var dot = item.name.lastIndexOf(".");
+      var ext = dot > -1 ? item.name.slice(dot + 1).toLowerCase() : "jpg";
+      var path = prefix + "/" + Date.now() + "_" +
+                 Math.random().toString(36).slice(2, 8) + "." + ext;
+      return sb.storage.from(BUCKET).upload(path, item.file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: item.file.type || "image/jpeg"
+      }).then(function (res) {
+        if (res.error) throw res.error;
+        return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+      });
+    });
+    return Promise.all(tasks);
   }
-  function save(list) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-      return true;
-    } catch (e) {
-      // 용량 초과 등
-      return false;
-    }
+
+  /* ---------- Supabase: 취합 목록 조회 ---------- */
+  function fetchEntries() {
+    return sb.from(TABLE).select("*").order("submitted_at", { ascending: false })
+      .then(function (res) {
+        if (res.error) throw res.error;
+        return res.data || [];
+      });
   }
 
   /* ---------- 검증 ---------- */
@@ -414,15 +435,14 @@
   }
 
   /* ---------- 알람(토스트 + 브라우저 알림) ---------- */
-  function notify(entry) {
-    var when = entry.submittedAtLabel;
-    toastEl.textContent = "✅ 제출 완료 · " + entry.modelName + " (" + when + ")";
+  function notify(modelName, hall, when) {
+    toastEl.textContent = "✅ 제출 완료 · " + modelName + " (" + when + ")";
     toastEl.classList.add("show");
     setTimeout(function () { toastEl.classList.remove("show"); }, 3500);
 
     if ("Notification" in window) {
       if (Notification.permission === "granted") {
-        new Notification("새 모델 제출", { body: entry.hall + " · " + entry.modelName + "\n" + when });
+        new Notification("새 모델 제출", { body: hall + " · " + modelName + "\n" + when });
       } else if (Notification.permission !== "denied") {
         Notification.requestPermission();
       }
@@ -436,6 +456,12 @@
            " " + p(d.getHours()) + ":" + p(d.getMinutes());
   }
 
+  function setSubmitting(on) {
+    submitBtn.disabled = on;
+    submitBtn.textContent = on ? "제출 중… 잠시만요" : "주택 모델 추가 제출하기";
+    submitBtn.style.opacity = on ? "0.7" : "";
+  }
+
   /* ---------- 제출 ---------- */
   form.addEventListener("submit", function (e) {
     e.preventDefault();
@@ -445,94 +471,115 @@
       return;
     }
 
-    var now = new Date();
-    var entry = {
-      id: Date.now(),
-      hall: document.getElementById("hall").value,
-      manager: document.getElementById("manager").value.trim(),
-      houseType: form.querySelector('input[name="houseType"]:checked').value,
-      modelName: document.getElementById("modelName").value.trim(),
-      pyeong: document.getElementById("pyeong").value,
-      price: document.getElementById("price").value.trim(),
-      exterior: exteriorFiles.slice(),
-      interior: interiorFiles.slice(),
-      submittedAt: now.toISOString(),
-      submittedAtLabel: formatDate(now)
-    };
+    var hall = document.getElementById("hall").value;
+    var manager = document.getElementById("manager").value.trim();
+    var houseType = form.querySelector('input[name="houseType"]:checked').value;
+    var modelName = document.getElementById("modelName").value.trim();
+    var pyeongVal = document.getElementById("pyeong").value;
+    var price = document.getElementById("price").value.trim();
 
-    var list = load();
-    list.unshift(entry);
-    if (!save(list)) {
-      alert("저장 용량을 초과했습니다. 사진 수를 줄이거나 기존 제출 자료를 정리해 주세요.");
-      return;
-    }
+    setSubmitting(true);
 
-    notify(entry);
+    Promise.all([
+      uploadPhotos(exteriorFiles, "exterior"),
+      uploadPhotos(interiorFiles, "interior")
+    ]).then(function (urls) {
+      return sb.from(TABLE).insert({
+        hall: hall,
+        manager: manager,
+        house_type: houseType,
+        model_name: modelName,
+        pyeong: pyeongVal === "" ? null : Number(pyeongVal),
+        price: price,
+        exterior_urls: urls[0],
+        interior_urls: urls[1]
+      }).select().single();
+    }).then(function (res) {
+      if (res.error) throw res.error;
 
-    // 초기화
-    form.reset();
-    exteriorFiles.length = 0;
-    interiorFiles.length = 0;
-    renderPreviews(document.getElementById("exteriorPreviews"), exteriorFiles);
-    renderPreviews(document.getElementById("interiorPreviews"), interiorFiles);
+      var when = formatDate(new Date(res.data.submitted_at || Date.now()));
+      notify(modelName, hall, when);
 
-    renderEntries();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+      // 초기화
+      form.reset();
+      exteriorFiles.length = 0;
+      interiorFiles.length = 0;
+      renderPreviews(document.getElementById("exteriorPreviews"), exteriorFiles);
+      renderPreviews(document.getElementById("interiorPreviews"), interiorFiles);
+
+      return renderEntries();
+    }).then(function () {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }).catch(function (err) {
+      console.error(err);
+      alert("제출 중 오류가 발생했습니다.\n" + (err && err.message ? err.message : err));
+    }).then(function () {
+      setSubmitting(false);
+    });
   });
 
   /* ---------- 취합 목록 렌더 ---------- */
   function renderEntries() {
-    var list = load();
     var box = document.getElementById("entries");
-    document.getElementById("count").textContent = list.length + "건";
-    box.innerHTML = "";
+    return fetchEntries().then(function (list) {
+      document.getElementById("count").textContent = list.length + "건";
+      box.innerHTML = "";
 
-    if (!list.length) {
-      box.innerHTML = '<div class="card empty">아직 제출된 모델이 없습니다.</div>';
-      return;
-    }
+      if (!list.length) {
+        box.innerHTML = '<div class="card empty">아직 제출된 모델이 없습니다.</div>';
+        return;
+      }
 
-    list.forEach(function (entry) {
-      var card = document.createElement("div");
-      card.className = "card entry";
+      list.forEach(function (entry) {
+        var card = document.createElement("div");
+        card.className = "card entry";
 
-      var thumbs = "";
-      var allImgs = (entry.exterior || []).concat(entry.interior || []);
-      allImgs.slice(0, 8).forEach(function (f) {
-        thumbs += '<img src="' + f.data + '" alt="">';
+        var thumbs = "";
+        var allImgs = (entry.exterior_urls || []).concat(entry.interior_urls || []);
+        allImgs.slice(0, 8).forEach(function (url) {
+          thumbs += '<img src="' + url + '" alt="" loading="lazy">';
+        });
+        var more = allImgs.length > 8 ? "<span style='align-self:center;color:#6b7280;font-size:13px;'>+" + (allImgs.length - 8) + "</span>" : "";
+
+        card.innerHTML =
+          '<div class="meta">' +
+            '<span>🕒 ' + formatDate(new Date(entry.submitted_at)) + '</span>' +
+            '<span>📍 ' + escapeHtml(entry.hall) + '</span>' +
+            '<span>👤 ' + escapeHtml(entry.manager) + '</span>' +
+          '</div>' +
+          '<h3>' + escapeHtml(entry.model_name) + ' <span class="type-tag">' + escapeHtml(entry.house_type) + '</span></h3>' +
+          '<div style="color:#374151;font-size:14px;">' +
+            (entry.pyeong != null ? entry.pyeong + '평 · ' : '') + escapeHtml(entry.price || '') +
+          '</div>' +
+          (thumbs ? '<div class="thumbs">' + thumbs + more + '</div>' : '') +
+          '<div class="entry-actions">' +
+            '<button type="button" class="del-entry" data-id="' + entry.id + '">삭제</button>' +
+          '</div>';
+
+        box.appendChild(card);
       });
-      var more = allImgs.length > 8 ? "<span style='align-self:center;color:#6b7280;font-size:13px;'>+" + (allImgs.length - 8) + "</span>" : "";
 
-      card.innerHTML =
-        '<div class="meta">' +
-          '<span>🕒 ' + entry.submittedAtLabel + '</span>' +
-          '<span>📍 ' + entry.hall + '</span>' +
-          '<span>👤 ' + entry.manager + '</span>' +
-        '</div>' +
-        '<h3>' + escapeHtml(entry.modelName) + ' <span class="type-tag">' + entry.houseType + '</span></h3>' +
-        '<div style="color:#374151;font-size:14px;">' +
-          entry.pyeong + '평 · ' + escapeHtml(entry.price) +
-        '</div>' +
-        (thumbs ? '<div class="thumbs">' + thumbs + more + '</div>' : '') +
-        '<div class="entry-actions">' +
-          '<button type="button" class="del-entry" data-id="' + entry.id + '">삭제</button>' +
-        '</div>';
-
-      box.appendChild(card);
-    });
-
-    box.querySelectorAll(".del-entry").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        if (!confirm("이 제출 자료를 삭제할까요?")) return;
-        var id = Number(btn.getAttribute("data-id"));
-        save(load().filter(function (x) { return x.id !== id; }));
-        renderEntries();
+      box.querySelectorAll(".del-entry").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          if (!confirm("이 제출 자료를 삭제할까요?")) return;
+          var id = btn.getAttribute("data-id");
+          sb.from(TABLE).delete().eq("id", id).then(function (res) {
+            if (res.error) {
+              alert("삭제 실패: " + res.error.message + "\n(삭제 정책이 꺼져 있으면 SQL에서 delete 정책을 켜주세요.)");
+              return;
+            }
+            renderEntries();
+          });
+        });
       });
+    }).catch(function (err) {
+      console.error(err);
+      box.innerHTML = '<div class="card empty">목록을 불러오지 못했습니다: ' + escapeHtml(err.message || String(err)) + '</div>';
     });
   }
 
   function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, function (c) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
       return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
     });
   }
