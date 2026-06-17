@@ -185,6 +185,37 @@
   .entry-actions .del-entry { color: var(--danger); border-color:#fca5a5; }
   .empty { text-align:center; color:var(--muted); padding:30px 0; font-size:14px; }
 
+  /* 취합 리스트 (표) */
+  .list-tools { display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+  .list-tools input[type=text] { flex:1 1 180px; padding:9px 12px; font-size:14px; }
+  .list-tools select { width:auto; flex:0 0 auto; padding:9px 12px; font-size:14px; }
+  .table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--border); border-radius:var(--radius); background:#fff; }
+  table.models { width:100%; border-collapse:collapse; min-width:820px; font-size:13.5px; }
+  table.models th, table.models td { padding:11px 12px; text-align:left; border-bottom:1px solid var(--border); vertical-align:middle; white-space:nowrap; }
+  table.models thead th { background:#f9fafb; color:var(--muted); font-weight:600; font-size:12.5px; }
+  table.models tbody tr.row-main:hover { background:#f9fafb; }
+  table.models td.model-cell { white-space:normal; min-width:150px; }
+  table.models td.model-cell strong { display:block; font-size:14px; }
+  table.models td.spec-cell { white-space:normal; max-width:240px; color:#374151; font-size:12.5px; }
+  table.models .mini-type { display:inline-block; background:#eef2ff; color:var(--brand-dark); font-size:11px; font-weight:600; padding:1px 7px; border-radius:5px; margin-top:3px; }
+  table.models .meta-sub { display:block; color:var(--muted); font-size:11.5px; margin-top:3px; }
+  .photo-cell { cursor:pointer; }
+  .photo-cell .pc-inner { display:inline-flex; align-items:center; gap:6px; }
+  .photo-cell img { width:38px; height:38px; object-fit:cover; border-radius:6px; border:1px solid var(--border); display:block; }
+  .photo-cell .pc-count { color:var(--muted); font-size:12px; }
+  .photo-cell .pc-none { color:#9ca3af; font-size:12px; }
+  .status-pill { display:inline-flex; align-items:center; gap:5px; border:none; cursor:pointer; font-size:12px; font-weight:600; padding:5px 11px; border-radius:20px; font-family:inherit; }
+  .status-pill.on { background:rgba(22,163,74,.12); color:var(--ok); }
+  .status-pill.off { background:#f3f4f6; color:var(--muted); }
+  .status-pill::before { content:""; width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .manage-btn { color:var(--brand-dark); border:1px solid var(--border); background:#fff; border-radius:7px; padding:5px 10px; font-size:12.5px; cursor:pointer; font-family:inherit; white-space:nowrap; }
+  .manage-btn:hover { border-color:var(--brand); background:rgba(37,99,235,.05); }
+  table.models tr.detail-row > td { background:#fbfcfe; padding:0; }
+  .detail-box { padding:16px 14px; }
+  .detail-actions { margin-top:14px; }
+  .detail-actions .del-entry { color:var(--danger); border:1px solid #fca5a5; background:#fff; border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; font-family:inherit; }
+  .list-empty { text-align:center; color:var(--muted); padding:34px 0; font-size:14px; }
+
   /* 제출 항목의 사진 그룹 */
   .photo-group { margin-top:14px; }
   .pg-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
@@ -317,6 +348,23 @@
         <div class="err-msg">주택가격을 입력해 주세요.</div>
       </div>
 
+      <!-- 추가: 주택 스펙 -->
+      <div class="field">
+        <label class="q" for="spec">주택 스펙</label>
+        <div class="hint">구조, 방/욕실 수, 자재·옵션 등 자유롭게 입력해 주세요.</div>
+        <textarea id="spec" name="spec" rows="3" placeholder="예) 방3 / 욕실2 / 다락 / 시스템에어컨 포함"></textarea>
+      </div>
+
+      <!-- 추가: 전시일정(전시 상태) -->
+      <div class="field">
+        <label class="q">전시일정 <span class="req">*</span></label>
+        <div class="choices" id="exhibitStatus">
+          <label class="choice"><input type="radio" name="exhibitStatus" value="전시중" checked required><span>전시중</span></label>
+          <label class="choice"><input type="radio" name="exhibitStatus" value="전시종료"><span>전시종료</span></label>
+        </div>
+        <div class="err-msg">전시일정을 선택해 주세요.</div>
+      </div>
+
       <div class="field">
         <label class="q">주택 외관사진</label>
         <div class="hint">외관 사진을 여러 장 첨부할 수 있습니다.</div>
@@ -347,12 +395,48 @@
     </div>
   </form>
 
-  <!-- 취합 목록 (제출일시 자동 표기) -->
+  <!-- 취합 리스트 (제출일시 자동 표기) -->
   <div class="list-head">
-    <h2>취합된 모델</h2>
+    <h2>주택 취합 리스트</h2>
     <span class="badge" id="count">0건</span>
   </div>
-  <div id="entries"></div>
+
+  <div class="list-tools">
+    <input type="text" id="searchInput" placeholder="🔍 모델명 · 담당자 · 스펙 검색" />
+    <select id="hallFilter">
+      <option value="">전체 전시장</option>
+      <option>본사</option>
+      <option>1전시장</option>
+      <option>3전시장</option>
+      <option>강화전시장</option>
+      <option>안동전시장</option>
+      <option>광주전시장</option>
+    </select>
+    <select id="statusFilter">
+      <option value="">전체 상태</option>
+      <option value="전시중">전시중</option>
+      <option value="전시종료">전시종료</option>
+    </select>
+  </div>
+
+  <div class="table-wrap">
+    <table class="models">
+      <thead>
+        <tr>
+          <th>모델</th>
+          <th>평형</th>
+          <th>가격</th>
+          <th>전시장</th>
+          <th>외부사진</th>
+          <th>내부사진</th>
+          <th>주택 스펙</th>
+          <th>전시일정</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="entries"></tbody>
+    </table>
+  </div>
 
 </div>
 
@@ -539,6 +623,8 @@
     var modelName = document.getElementById("modelName").value.trim();
     var pyeongVal = document.getElementById("pyeong").value;
     var price = document.getElementById("price").value.trim();
+    var spec = document.getElementById("spec").value.trim();
+    var exhibitStatus = (form.querySelector('input[name="exhibitStatus"]:checked') || {}).value || "전시중";
 
     setSubmitting(true);
 
@@ -553,6 +639,8 @@
         model_name: modelName,
         pyeong: pyeongVal === "" ? null : Number(pyeongVal),
         price: price,
+        spec: spec,
+        exhibit_status: exhibitStatus,
         exterior_urls: urls[0],
         interior_urls: urls[1]
       }).select().single();
@@ -685,44 +773,166 @@
     return group;
   }
 
-  /* ---------- 취합 목록 렌더 ---------- */
+  /* ---------- 전시일정(전시 상태) 토글 ---------- */
+  function toggleStatus(entry, pillBtn) {
+    var next = (entry.exhibit_status === "전시종료") ? "전시중" : "전시종료";
+    if (pillBtn) pillBtn.disabled = true;
+    sb.from(TABLE).update({ exhibit_status: next }).eq("id", entry.id).then(function (res) {
+      if (res.error) {
+        alert("전시일정 변경 실패: " + res.error.message +
+              "\n(house_models 테이블에 exhibit_status 컬럼과 update 정책이 있어야 합니다. schema.sql 참고)");
+        if (pillBtn) pillBtn.disabled = false;
+        return;
+      }
+      renderEntries();
+    });
+  }
+
+  /* ---------- 사진 셀 ---------- */
+  function photoCell(td, urls, label) {
+    urls = urls || [];
+    if (!urls.length) {
+      td.innerHTML = '<span class="pc-none">없음</span>';
+      return;
+    }
+    td.className = "photo-cell";
+    td.innerHTML = '<span class="pc-inner"><img src="' + escapeHtml(urls[0]) +
+                   '" alt=""><span class="pc-count">' + urls.length + '장</span></span>';
+    td.addEventListener("click", function () { openLightbox(urls, 0); });
+    td.title = label + " 크게 보기";
+  }
+
+  /* ---------- 검색/필터 ---------- */
+  function getFiltered(list) {
+    var q = (document.getElementById("searchInput").value || "").trim().toLowerCase();
+    var hall = document.getElementById("hallFilter").value;
+    var status = document.getElementById("statusFilter").value;
+    return list.filter(function (e) {
+      if (hall && e.hall !== hall) return false;
+      if (status && (e.exhibit_status || "전시중") !== status) return false;
+      if (q) {
+        var hay = [e.model_name, e.manager, e.spec, e.price, e.house_type].join(" ").toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  /* ---------- 취합 리스트 렌더 ---------- */
+  var entriesCache = [];
+
   function renderEntries() {
+    return fetchEntries().then(function (all) {
+      entriesCache = all;
+      renderTable();
+    }).catch(function (err) {
+      console.error(err);
+      document.getElementById("entries").innerHTML =
+        '<tr><td colspan="9"><div class="list-empty">목록을 불러오지 못했습니다: ' +
+        escapeHtml(err.message || String(err)) + '</div></td></tr>';
+    });
+  }
+
+  function renderTable() {
     var box = document.getElementById("entries");
-    return fetchEntries().then(function (list) {
-      document.getElementById("count").textContent = list.length + "건";
-      box.innerHTML = "";
+    var all = entriesCache;
+    document.getElementById("count").textContent = all.length + "건";
+    var list = getFiltered(all);
+    box.innerHTML = "";
 
       if (!list.length) {
-        box.innerHTML = '<div class="card empty">아직 제출된 모델이 없습니다.</div>';
+        box.innerHTML = '<tr><td colspan="9"><div class="list-empty">' +
+          (all.length ? "검색/필터 조건에 맞는 모델이 없습니다." : "아직 제출된 모델이 없습니다.") +
+          '</div></td></tr>';
         return;
       }
 
       list.forEach(function (entry) {
-        var card = document.createElement("div");
-        card.className = "card entry";
+        var status = entry.exhibit_status || "전시중";
+        var on = status === "전시중";
 
-        var info = document.createElement("div");
-        info.innerHTML =
-          '<div class="meta">' +
-            '<span>🕒 ' + formatDate(new Date(entry.submitted_at)) + '</span>' +
-            '<span>📍 ' + escapeHtml(entry.hall) + '</span>' +
-            '<span>👤 ' + escapeHtml(entry.manager) + '</span>' +
-          '</div>' +
-          '<h3>' + escapeHtml(entry.model_name) + ' <span class="type-tag">' + escapeHtml(entry.house_type) + '</span></h3>' +
-          '<div style="color:#374151;font-size:14px;">' +
-            (entry.pyeong != null ? escapeHtml(String(entry.pyeong)) + '평 · ' : '') + escapeHtml(entry.price || '') +
-          '</div>';
-        card.appendChild(info);
+        var tr = document.createElement("tr");
+        tr.className = "row-main";
 
-        card.appendChild(buildPhotoGroup(entry, "exterior_urls", "exterior", "🏠 외관사진"));
-        card.appendChild(buildPhotoGroup(entry, "interior_urls", "interior", "🛋️ 내부사진"));
+        // 모델
+        var tdModel = document.createElement("td");
+        tdModel.className = "model-cell";
+        tdModel.innerHTML =
+          '<strong>' + escapeHtml(entry.model_name) + '</strong>' +
+          '<span class="mini-type">' + escapeHtml(entry.house_type || "-") + '</span>' +
+          '<span class="meta-sub">🕒 ' + formatDate(new Date(entry.submitted_at)) +
+            ' · 👤 ' + escapeHtml(entry.manager || "-") + '</span>';
+        tr.appendChild(tdModel);
+
+        // 평형
+        var tdPy = document.createElement("td");
+        tdPy.textContent = (entry.pyeong != null ? entry.pyeong + "평" : "-");
+        tr.appendChild(tdPy);
+
+        // 가격
+        var tdPrice = document.createElement("td");
+        tdPrice.textContent = entry.price || "-";
+        tr.appendChild(tdPrice);
+
+        // 전시장
+        var tdHall = document.createElement("td");
+        tdHall.textContent = entry.hall || "-";
+        tr.appendChild(tdHall);
+
+        // 외부사진 / 내부사진
+        var tdExt = document.createElement("td");
+        photoCell(tdExt, entry.exterior_urls, "외부사진");
+        tr.appendChild(tdExt);
+        var tdInt = document.createElement("td");
+        photoCell(tdInt, entry.interior_urls, "내부사진");
+        tr.appendChild(tdInt);
+
+        // 주택 스펙
+        var tdSpec = document.createElement("td");
+        tdSpec.className = "spec-cell";
+        if (entry.spec) { tdSpec.textContent = entry.spec; }
+        else { tdSpec.innerHTML = '<span class="pc-none">-</span>'; }
+        tr.appendChild(tdSpec);
+
+        // 전시일정 (토글)
+        var tdStatus = document.createElement("td");
+        var pill = document.createElement("button");
+        pill.type = "button";
+        pill.className = "status-pill " + (on ? "on" : "off");
+        pill.textContent = status;
+        pill.title = "클릭하면 전시중 ↔ 전시종료 전환";
+        pill.addEventListener("click", function () { toggleStatus(entry, pill); });
+        tdStatus.appendChild(pill);
+        tr.appendChild(tdStatus);
+
+        // 관리(사진 추가/삭제, 삭제)
+        var tdManage = document.createElement("td");
+        var manageBtn = document.createElement("button");
+        manageBtn.type = "button";
+        manageBtn.className = "manage-btn";
+        manageBtn.textContent = "관리 ▾";
+        tdManage.appendChild(manageBtn);
+        tr.appendChild(tdManage);
+
+        box.appendChild(tr);
+
+        // 상세(관리) 행 — 사진 추가/삭제 + 항목 삭제
+        var detail = document.createElement("tr");
+        detail.className = "detail-row";
+        detail.style.display = "none";
+        var detailTd = document.createElement("td");
+        detailTd.colSpan = 9;
+        var detailBox = document.createElement("div");
+        detailBox.className = "detail-box";
+        detailBox.appendChild(buildPhotoGroup(entry, "exterior_urls", "exterior", "🏠 외관사진"));
+        detailBox.appendChild(buildPhotoGroup(entry, "interior_urls", "interior", "🛋️ 내부사진"));
 
         var actions = document.createElement("div");
-        actions.className = "entry-actions";
+        actions.className = "detail-actions";
         var delBtn = document.createElement("button");
         delBtn.type = "button";
         delBtn.className = "del-entry";
-        delBtn.textContent = "삭제";
+        delBtn.textContent = "이 모델 삭제";
         delBtn.addEventListener("click", function () {
           if (!confirm("이 제출 자료를 삭제할까요?")) return;
           sb.from(TABLE).delete().eq("id", entry.id).then(function (res) {
@@ -734,15 +944,23 @@
           });
         });
         actions.appendChild(delBtn);
-        card.appendChild(actions);
+        detailBox.appendChild(actions);
+        detailTd.appendChild(detailBox);
+        detail.appendChild(detailTd);
+        box.appendChild(detail);
 
-        box.appendChild(card);
+        manageBtn.addEventListener("click", function () {
+          var open = detail.style.display !== "none";
+          detail.style.display = open ? "none" : "table-row";
+          manageBtn.textContent = open ? "관리 ▾" : "닫기 ▴";
+        });
       });
-    }).catch(function (err) {
-      console.error(err);
-      box.innerHTML = '<div class="card empty">목록을 불러오지 못했습니다: ' + escapeHtml(err.message || String(err)) + '</div>';
-    });
   }
+
+  /* 검색/필터 이벤트 (재조회 없이 캐시 기준 필터) */
+  document.getElementById("searchInput").addEventListener("input", renderTable);
+  document.getElementById("hallFilter").addEventListener("change", renderTable);
+  document.getElementById("statusFilter").addEventListener("change", renderTable);
 
   function escapeHtml(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
