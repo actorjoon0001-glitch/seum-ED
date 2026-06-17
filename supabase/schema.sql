@@ -13,6 +13,9 @@ create table if not exists public.house_models (
   model_name    text        not null,                 -- 주택 모델명
   pyeong        numeric,                              -- 주택 평형
   price         text,                                 -- 주택가격 (예: "3억")
+  spec          text,                                 -- 주택 스펙 (구조/방·욕실/옵션 등)
+  exhibit_status text       not null default '전시중'
+                  check (exhibit_status in ('전시중','전시종료')),  -- 전시일정(상태)
   exterior_urls jsonb       not null default '[]',    -- 외관사진 URL 배열
   interior_urls jsonb       not null default '[]',    -- 내부사진 URL 배열
   submitted_at  timestamptz not null default now(),   -- 제출일시(자동)
@@ -77,3 +80,17 @@ alter table public.house_models
 alter table public.house_models
   add constraint house_models_house_type_check
   check (house_type in ('이동식주택','체류형쉼터','농막','컨테이너','기타'));
+
+-- =========================================================
+-- 마이그레이션: 주택 스펙 / 전시일정(전시 상태) 컬럼 추가
+-- 이미 테이블이 있는 경우 아래를 SQL Editor 에서 한 번 실행해 주세요.
+-- =========================================================
+alter table public.house_models
+  add column if not exists spec text;
+alter table public.house_models
+  add column if not exists exhibit_status text not null default '전시중';
+alter table public.house_models
+  drop constraint if exists house_models_exhibit_status_check;
+alter table public.house_models
+  add constraint house_models_exhibit_status_check
+  check (exhibit_status in ('전시중','전시종료'));
