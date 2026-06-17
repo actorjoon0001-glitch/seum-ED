@@ -286,8 +286,10 @@
       <div class="field">
         <label class="q">주택 유형 <span class="req">*</span></label>
         <div class="choices" id="houseType">
-          <label class="choice"><input type="radio" name="houseType" value="주택" required><span>주택</span></label>
-          <label class="choice"><input type="radio" name="houseType" value="쉼터"><span>쉼터</span></label>
+          <label class="choice"><input type="radio" name="houseType" value="이동식주택" required><span>이동식주택</span></label>
+          <label class="choice"><input type="radio" name="houseType" value="체류형쉼터"><span>체류형쉼터</span></label>
+          <label class="choice"><input type="radio" name="houseType" value="농막"><span>농막</span></label>
+          <label class="choice"><input type="radio" name="houseType" value="컨테이너"><span>컨테이너</span></label>
           <label class="choice"><input type="radio" name="houseType" value="기타"><span>기타</span></label>
         </div>
         <div class="err-msg">주택 유형을 선택해 주세요.</div>
@@ -295,7 +297,8 @@
 
       <div class="field">
         <label class="q" for="modelName">주택 모델명 <span class="req">*</span></label>
-        <input type="text" id="modelName" name="modelName" placeholder="예) 장군이네" required />
+        <div class="hint">유형별 코드 + 평수 + 색상(약자) 순으로 작성해 주세요. (이동식주택 = STAY · 체류형쉼터 = FOREST · 농막/컨테이너 = CUBE)<br>예) STAY24W(화이트), FOREST10B(블랙), CUBE6O(오렌지)</div>
+        <input type="text" id="modelName" name="modelName" placeholder="예) STAY24W(화이트)" required />
         <div class="err-msg">주택 모델명을 입력해 주세요.</div>
       </div>
 
