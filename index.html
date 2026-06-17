@@ -28,6 +28,19 @@
   }
   .wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 80px; }
 
+  /* 레이아웃: 모바일은 세로 1단(기본), PC는 좌우 2단 */
+  .layout { display: block; }
+  .col-form, .col-list { min-width: 0; }
+
+  /* 태블릿/PC: 컨테이너를 넓히고 폼+리스트를 좌우 배치 */
+  @media (min-width: 1000px) {
+    .wrap { max-width: 1440px; padding: 28px 28px 80px; }
+    .layout { display: flex; gap: 28px; align-items: flex-start; }
+    .col-form { flex: 0 0 440px; }
+    .col-list { flex: 1 1 auto; }
+    .col-list .list-head { margin-top: 0; }
+  }
+
   header.page {
     background: linear-gradient(135deg, var(--brand) 0%, #4f46e5 100%);
     color: #fff;
@@ -290,7 +303,9 @@
     <p>전시장 팀장님들께서 보유 모델 정보를 입력해 주세요. 입력하신 자료로 상세페이지를 제작합니다.</p>
   </header>
 
-  <form id="modelForm" novalidate>
+  <div class="layout">
+   <div class="col-form">
+    <form id="modelForm" novalidate>
     <div class="card">
 
       <div class="field">
@@ -393,8 +408,10 @@
     <div class="submit-bar">
       <button type="submit" class="submit">주택 모델 추가 제출하기</button>
     </div>
-  </form>
+    </form>
+   </div><!-- /col-form -->
 
+   <div class="col-list">
   <!-- 취합 리스트 (제출일시 자동 표기) -->
   <div class="list-head">
     <h2>주택 취합 리스트</h2>
@@ -437,6 +454,8 @@
       <tbody id="entries"></tbody>
     </table>
   </div>
+   </div><!-- /col-list -->
+  </div><!-- /layout -->
 
 </div>
 
