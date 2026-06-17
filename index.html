@@ -180,12 +180,62 @@
   .entry .meta { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
   .entry h3 { margin: 0 0 4px; font-size: 16px; }
   .entry .type-tag { display:inline-block; background:#eef2ff; color:var(--brand-dark); font-size:12px; font-weight:600; padding:2px 9px; border-radius:6px; }
-  .entry .thumbs { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
-  .entry .thumbs img { width:56px; height:56px; object-fit:cover; border-radius:6px; border:1px solid var(--border); }
   .entry-actions { margin-top:12px; display:flex; gap:8px; }
   .entry-actions button { font-size:13px; padding:7px 12px; border-radius:8px; border:1px solid var(--border); background:#fff; cursor:pointer; }
   .entry-actions .del-entry { color: var(--danger); border-color:#fca5a5; }
   .empty { text-align:center; color:var(--muted); padding:30px 0; font-size:14px; }
+
+  /* 제출 항목의 사진 그룹 */
+  .photo-group { margin-top:14px; }
+  .pg-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+  .pg-title { font-size:13.5px; font-weight:600; color:#374151; }
+  .pg-count { color:var(--muted); font-weight:500; }
+  .pg-add {
+    font-size:12.5px; font-weight:600; color:var(--brand-dark);
+    border:1px solid var(--border); background:#fff; border-radius:8px;
+    padding:6px 11px; cursor:pointer; white-space:nowrap; transition:all .15s; font-family:inherit;
+  }
+  .pg-add:hover { border-color:var(--brand); background:rgba(37,99,235,.05); }
+  .pg-add[disabled] { opacity:.6; cursor:default; }
+  .pg-thumbs { display:grid; grid-template-columns:repeat(auto-fill, minmax(72px,1fr)); gap:8px; }
+  .pg-thumbs figure {
+    margin:0; position:relative; aspect-ratio:1; border-radius:8px; overflow:hidden;
+    border:1px solid var(--border); background:#f3f4f6; cursor:zoom-in;
+  }
+  .pg-thumbs img { width:100%; height:100%; object-fit:cover; display:block; }
+  .pg-thumbs .del {
+    position:absolute; top:4px; right:4px;
+    width:22px; height:22px; border-radius:50%; border:none;
+    background:rgba(0,0,0,.6); color:#fff; font-size:14px; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .pg-empty { font-size:13px; color:var(--muted); padding:4px 0; }
+
+  /* 라이트박스(사진 크게 보기) */
+  #lightbox {
+    position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:200;
+    display:none; align-items:center; justify-content:center; padding:24px;
+  }
+  #lightbox.show { display:flex; }
+  #lightbox img { max-width:100%; max-height:100%; border-radius:8px; box-shadow:0 8px 40px rgba(0,0,0,.5); }
+  #lightbox .lb-close {
+    position:absolute; top:16px; right:18px; width:44px; height:44px; border-radius:50%;
+    border:none; background:rgba(255,255,255,.15); color:#fff; font-size:24px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #lightbox .lb-nav {
+    position:absolute; top:50%; transform:translateY(-50%);
+    width:48px; height:48px; border-radius:50%; border:none;
+    background:rgba(255,255,255,.15); color:#fff; font-size:26px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #lightbox .lb-prev { left:14px; }
+  #lightbox .lb-next { right:14px; }
+  #lightbox .lb-count {
+    position:absolute; bottom:18px; left:50%; transform:translateX(-50%);
+    color:#fff; font-size:13px; background:rgba(0,0,0,.4); padding:4px 12px; border-radius:20px;
+  }
+  #lightbox .lb-nav:disabled { opacity:.25; cursor:default; }
 
   /* 토스트 */
   #toast {
@@ -303,6 +353,14 @@
 </div>
 
 <div id="toast"></div>
+
+<div id="lightbox" aria-hidden="true">
+  <button type="button" class="lb-close" aria-label="닫기">&times;</button>
+  <button type="button" class="lb-nav lb-prev" aria-label="이전">&#8249;</button>
+  <img id="lbImg" src="" alt="" />
+  <button type="button" class="lb-nav lb-next" aria-label="다음">&#8250;</button>
+  <div class="lb-count" id="lbCount"></div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -518,6 +576,111 @@
     });
   });
 
+  /* ---------- 제출 후 사진 추가/삭제 (Supabase update) ---------- */
+  function addPhotosToEntry(entry, column, prefix, fileList, addBtn) {
+    var files = Array.prototype.slice.call(fileList);
+    if (!files.length) return;
+    var items = files.map(function (f) { return { name: f.name, file: f }; });
+    if (addBtn) { addBtn.disabled = true; addBtn.textContent = "추가 중…"; }
+
+    uploadPhotos(items, prefix).then(function (urls) {
+      var merged = (entry[column] || []).concat(urls);
+      var patch = {};
+      patch[column] = merged;
+      return sb.from(TABLE).update(patch).eq("id", entry.id);
+    }).then(function (res) {
+      if (res.error) throw res.error;
+      return renderEntries();
+    }).catch(function (err) {
+      console.error(err);
+      alert("사진 추가 중 오류가 발생했습니다.\n" + (err && err.message ? err.message : err) +
+            "\n(업데이트가 막혀 있으면 schema.sql의 update 정책을 켜주세요.)");
+      if (addBtn) { addBtn.disabled = false; addBtn.textContent = "+ 사진 추가"; }
+    });
+  }
+
+  function deletePhotoFromEntry(entry, column, index) {
+    var arr = (entry[column] || []).slice();
+    arr.splice(index, 1);
+    var patch = {};
+    patch[column] = arr;
+    sb.from(TABLE).update(patch).eq("id", entry.id).then(function (res) {
+      if (res.error) {
+        alert("사진 삭제 실패: " + res.error.message + "\n(update 정책을 켜주세요.)");
+        return;
+      }
+      renderEntries();
+    });
+  }
+
+  /* ---------- 사진 그룹(외관/내부) 렌더 ---------- */
+  function buildPhotoGroup(entry, column, prefix, title) {
+    var urls = entry[column] || [];
+
+    var group = document.createElement("div");
+    group.className = "photo-group";
+
+    var head = document.createElement("div");
+    head.className = "pg-head";
+    head.innerHTML =
+      '<span class="pg-title">' + title +
+      ' <span class="pg-count">(' + urls.length + ')</span></span>';
+
+    var addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = "pg-add";
+    addBtn.textContent = "+ 사진 추가";
+    var addInput = document.createElement("input");
+    addInput.type = "file";
+    addInput.accept = "image/*";
+    addInput.multiple = true;
+    addInput.className = "file-hidden";
+    addBtn.addEventListener("click", function () { addInput.click(); });
+    addInput.addEventListener("change", function () {
+      addPhotosToEntry(entry, column, prefix, addInput.files, addBtn);
+      addInput.value = "";
+    });
+    head.appendChild(addBtn);
+    group.appendChild(head);
+    group.appendChild(addInput);
+
+    if (!urls.length) {
+      var empty = document.createElement("div");
+      empty.className = "pg-empty";
+      empty.textContent = "첨부된 사진이 없습니다.";
+      group.appendChild(empty);
+      return group;
+    }
+
+    var thumbs = document.createElement("div");
+    thumbs.className = "pg-thumbs";
+    urls.forEach(function (url, idx) {
+      var fig = document.createElement("figure");
+
+      var img = document.createElement("img");
+      img.src = url;
+      img.loading = "lazy";
+      img.alt = "";
+      img.addEventListener("click", function () { openLightbox(urls, idx); });
+
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "del";
+      del.innerHTML = "&times;";
+      del.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (!confirm("이 사진을 삭제할까요?")) return;
+        deletePhotoFromEntry(entry, column, idx);
+      });
+
+      fig.appendChild(img);
+      fig.appendChild(del);
+      thumbs.appendChild(fig);
+    });
+    group.appendChild(thumbs);
+    return group;
+  }
+
   /* ---------- 취합 목록 렌더 ---------- */
   function renderEntries() {
     var box = document.getElementById("entries");
@@ -534,14 +697,8 @@
         var card = document.createElement("div");
         card.className = "card entry";
 
-        var thumbs = "";
-        var allImgs = (entry.exterior_urls || []).concat(entry.interior_urls || []);
-        allImgs.slice(0, 8).forEach(function (url) {
-          thumbs += '<img src="' + url + '" alt="" loading="lazy">';
-        });
-        var more = allImgs.length > 8 ? "<span style='align-self:center;color:#6b7280;font-size:13px;'>+" + (allImgs.length - 8) + "</span>" : "";
-
-        card.innerHTML =
+        var info = document.createElement("div");
+        info.innerHTML =
           '<div class="meta">' +
             '<span>🕒 ' + formatDate(new Date(entry.submitted_at)) + '</span>' +
             '<span>📍 ' + escapeHtml(entry.hall) + '</span>' +
@@ -549,21 +706,22 @@
           '</div>' +
           '<h3>' + escapeHtml(entry.model_name) + ' <span class="type-tag">' + escapeHtml(entry.house_type) + '</span></h3>' +
           '<div style="color:#374151;font-size:14px;">' +
-            (entry.pyeong != null ? entry.pyeong + '평 · ' : '') + escapeHtml(entry.price || '') +
-          '</div>' +
-          (thumbs ? '<div class="thumbs">' + thumbs + more + '</div>' : '') +
-          '<div class="entry-actions">' +
-            '<button type="button" class="del-entry" data-id="' + entry.id + '">삭제</button>' +
+            (entry.pyeong != null ? escapeHtml(String(entry.pyeong)) + '평 · ' : '') + escapeHtml(entry.price || '') +
           '</div>';
+        card.appendChild(info);
 
-        box.appendChild(card);
-      });
+        card.appendChild(buildPhotoGroup(entry, "exterior_urls", "exterior", "🏠 외관사진"));
+        card.appendChild(buildPhotoGroup(entry, "interior_urls", "interior", "🛋️ 내부사진"));
 
-      box.querySelectorAll(".del-entry").forEach(function (btn) {
-        btn.addEventListener("click", function () {
+        var actions = document.createElement("div");
+        actions.className = "entry-actions";
+        var delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.className = "del-entry";
+        delBtn.textContent = "삭제";
+        delBtn.addEventListener("click", function () {
           if (!confirm("이 제출 자료를 삭제할까요?")) return;
-          var id = btn.getAttribute("data-id");
-          sb.from(TABLE).delete().eq("id", id).then(function (res) {
+          sb.from(TABLE).delete().eq("id", entry.id).then(function (res) {
             if (res.error) {
               alert("삭제 실패: " + res.error.message + "\n(삭제 정책이 꺼져 있으면 SQL에서 delete 정책을 켜주세요.)");
               return;
@@ -571,6 +729,10 @@
             renderEntries();
           });
         });
+        actions.appendChild(delBtn);
+        card.appendChild(actions);
+
+        box.appendChild(card);
       });
     }).catch(function (err) {
       console.error(err);
@@ -583,6 +745,47 @@
       return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
     });
   }
+
+  /* ---------- 라이트박스(사진 크게 보기) ---------- */
+  var lightbox = document.getElementById("lightbox");
+  var lbImg = document.getElementById("lbImg");
+  var lbCount = document.getElementById("lbCount");
+  var lbUrls = [];
+  var lbIndex = 0;
+
+  function lbRender() {
+    if (!lbUrls.length) { closeLightbox(); return; }
+    if (lbIndex < 0) lbIndex = 0;
+    if (lbIndex > lbUrls.length - 1) lbIndex = lbUrls.length - 1;
+    lbImg.src = lbUrls[lbIndex];
+    lbCount.textContent = (lbIndex + 1) + " / " + lbUrls.length;
+    lightbox.querySelector(".lb-prev").disabled = lbIndex === 0;
+    lightbox.querySelector(".lb-next").disabled = lbIndex === lbUrls.length - 1;
+  }
+  function openLightbox(urls, index) {
+    lbUrls = urls;
+    lbIndex = index || 0;
+    lightbox.classList.add("show");
+    lightbox.setAttribute("aria-hidden", "false");
+    lbRender();
+  }
+  function closeLightbox() {
+    lightbox.classList.remove("show");
+    lightbox.setAttribute("aria-hidden", "true");
+    lbImg.src = "";
+  }
+  lightbox.querySelector(".lb-close").addEventListener("click", closeLightbox);
+  lightbox.querySelector(".lb-prev").addEventListener("click", function () { lbIndex--; lbRender(); });
+  lightbox.querySelector(".lb-next").addEventListener("click", function () { lbIndex++; lbRender(); });
+  lightbox.addEventListener("click", function (e) {
+    if (e.target === lightbox) closeLightbox();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (!lightbox.classList.contains("show")) return;
+    if (e.key === "Escape") closeLightbox();
+    else if (e.key === "ArrowLeft") { lbIndex--; lbRender(); }
+    else if (e.key === "ArrowRight") { lbIndex++; lbRender(); }
+  });
 
   renderEntries();
 })();
