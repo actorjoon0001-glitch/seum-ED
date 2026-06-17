@@ -9,7 +9,7 @@ create table if not exists public.house_models (
   hall          text        not null,                 -- 전시장 선택
   manager       text        not null,                 -- 담당자 이름
   house_type    text        not null
-                  check (house_type in ('주택','쉼터','기타')),  -- 주택 유형(선택형)
+                  check (house_type in ('이동식주택','체류형쉼터','농막','컨테이너','기타')),  -- 주택 유형(선택형)
   model_name    text        not null,                 -- 주택 모델명
   pyeong        numeric,                              -- 주택 평형
   price         text,                                 -- 주택가격 (예: "3억")
@@ -65,3 +65,15 @@ create policy "public read house-photos"
   on storage.objects for select
   to anon, authenticated
   using (bucket_id = 'house-photos');
+
+-- =========================================================
+-- 마이그레이션: 이미 만들어진 테이블의 house_type 허용값 변경
+-- (주택/쉼터/기타 → 이동식주택/체류형쉼터/농막/컨테이너/기타)
+-- 테이블이 이미 존재하면 위 create 의 check 가 적용되지 않으므로
+-- 아래를 SQL Editor 에서 한 번 실행해 주세요.
+-- =========================================================
+alter table public.house_models
+  drop constraint if exists house_models_house_type_check;
+alter table public.house_models
+  add constraint house_models_house_type_check
+  check (house_type in ('이동식주택','체류형쉼터','농막','컨테이너','기타'));
