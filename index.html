@@ -225,6 +225,19 @@
   .manage-btn:hover { border-color:var(--brand); background:rgba(37,99,235,.05); }
   table.models tr.detail-row > td { background:#fbfcfe; padding:0; }
   .detail-box { padding:16px 14px; }
+  /* 관리 패널 내 정보 수정 폼 */
+  .edit-form { background:#fff; border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:14px; }
+  .ef-title { font-size:13.5px; font-weight:700; color:#374151; margin-bottom:10px; }
+  .ef-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:10px 12px; }
+  .ef-field { display:flex; flex-direction:column; gap:5px; }
+  .ef-field.ef-full { margin-top:10px; }
+  .ef-label { font-size:12px; font-weight:600; color:var(--muted); }
+  .edit-form input, .edit-form select, .edit-form textarea { padding:9px 11px; font-size:14px; }
+  .ef-bar { margin-top:12px; }
+  .ef-save { background:var(--brand); color:#fff; border:none; border-radius:8px; padding:9px 22px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .ef-save:hover { background:var(--brand-dark); }
+  .ef-save[disabled] { opacity:.6; cursor:default; }
+  @media (max-width: 560px) { .ef-grid { grid-template-columns:1fr; } }
   .detail-actions { margin-top:14px; }
   .detail-actions .del-entry { color:var(--danger); border:1px solid #fca5a5; background:#fff; border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; font-family:inherit; }
   .list-empty { text-align:center; color:var(--muted); padding:34px 0; font-size:14px; }
@@ -792,6 +805,119 @@
     return group;
   }
 
+  /* ---------- 항목 수정 폼 (관리 패널 내) ---------- */
+  var HALL_OPTS = ["본사","1전시장","3전시장","강화전시장","안동전시장","광주전시장"];
+  var TYPE_OPTS = ["이동식주택","체류형쉼터","농막","컨테이너","기타"];
+  var STATUS_OPTS = ["전시중","전시종료"];
+
+  function makeField(labelText, control) {
+    var wrap = document.createElement("label");
+    wrap.className = "ef-field";
+    var lab = document.createElement("span");
+    lab.className = "ef-label";
+    lab.textContent = labelText;
+    wrap.appendChild(lab);
+    wrap.appendChild(control);
+    return wrap;
+  }
+  function makeSelect(options, value) {
+    var sel = document.createElement("select");
+    options.forEach(function (o) {
+      var opt = document.createElement("option");
+      opt.value = o; opt.textContent = o;
+      if (o === value) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    return sel;
+  }
+  function makeInput(type, value) {
+    var inp = document.createElement("input");
+    inp.type = type;
+    if (type === "number") { inp.min = "0"; inp.step = "0.1"; }
+    inp.value = (value == null ? "" : value);
+    return inp;
+  }
+
+  function buildEditForm(entry) {
+    var box = document.createElement("div");
+    box.className = "edit-form";
+
+    var title = document.createElement("div");
+    title.className = "ef-title";
+    title.textContent = "✏️ 정보 수정";
+    box.appendChild(title);
+
+    var grid = document.createElement("div");
+    grid.className = "ef-grid";
+
+    var hallSel  = makeSelect(HALL_OPTS, entry.hall);
+    var mgrInp   = makeInput("text", entry.manager);
+    var typeSel  = makeSelect(TYPE_OPTS, entry.house_type);
+    var nameInp  = makeInput("text", entry.model_name);
+    var pyInp    = makeInput("number", entry.pyeong);
+    var priceInp = makeInput("text", entry.price);
+    var statusSel = makeSelect(STATUS_OPTS, entry.exhibit_status || "전시중");
+
+    grid.appendChild(makeField("전시장", hallSel));
+    grid.appendChild(makeField("담당자", mgrInp));
+    grid.appendChild(makeField("주택 유형", typeSel));
+    grid.appendChild(makeField("주택 모델명", nameInp));
+    grid.appendChild(makeField("주택 평형(평)", pyInp));
+    grid.appendChild(makeField("주택가격", priceInp));
+    grid.appendChild(makeField("전시일정", statusSel));
+    box.appendChild(grid);
+
+    var specInp = document.createElement("textarea");
+    specInp.rows = 2;
+    specInp.value = entry.spec || "";
+    var specField = makeField("주택 스펙", specInp);
+    specField.classList.add("ef-full");
+    box.appendChild(specField);
+
+    var bar = document.createElement("div");
+    bar.className = "ef-bar";
+    var saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.className = "ef-save";
+    saveBtn.textContent = "저장";
+    saveBtn.addEventListener("click", function () {
+      var modelName = nameInp.value.trim();
+      var manager = mgrInp.value.trim();
+      var price = priceInp.value.trim();
+      if (!modelName || !manager || !price) {
+        alert("모델명·담당자·가격은 비울 수 없습니다.");
+        return;
+      }
+      var patch = {
+        hall: hallSel.value,
+        manager: manager,
+        house_type: typeSel.value,
+        model_name: modelName,
+        pyeong: pyInp.value === "" ? null : Number(pyInp.value),
+        price: price,
+        spec: specInp.value.trim(),
+        exhibit_status: statusSel.value
+      };
+      saveBtn.disabled = true;
+      saveBtn.textContent = "저장 중…";
+      sb.from(TABLE).update(patch).eq("id", entry.id).then(function (res) {
+        if (res.error) {
+          alert("수정 실패: " + res.error.message + "\n(update 정책 및 컬럼을 확인해 주세요. schema.sql 참고)");
+          saveBtn.disabled = false;
+          saveBtn.textContent = "저장";
+          return;
+        }
+        toastEl.textContent = "✅ 수정 완료 · " + modelName;
+        toastEl.classList.add("show");
+        setTimeout(function () { toastEl.classList.remove("show"); }, 2500);
+        renderEntries();
+      });
+    });
+    bar.appendChild(saveBtn);
+    box.appendChild(bar);
+    return box;
+  }
+
   /* ---------- 전시일정(전시 상태) 토글 ---------- */
   function toggleStatus(entry, pillBtn) {
     var next = (entry.exhibit_status === "전시종료") ? "전시중" : "전시종료";
@@ -943,6 +1069,7 @@
         detailTd.colSpan = 9;
         var detailBox = document.createElement("div");
         detailBox.className = "detail-box";
+        detailBox.appendChild(buildEditForm(entry));
         detailBox.appendChild(buildPhotoGroup(entry, "exterior_urls", "exterior", "🏠 외관사진"));
         detailBox.appendChild(buildPhotoGroup(entry, "interior_urls", "interior", "🛋️ 내부사진"));
 
