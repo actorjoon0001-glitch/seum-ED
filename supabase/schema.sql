@@ -37,6 +37,13 @@ create policy "anyone can read"
   to anon, authenticated
   using (true);
 
+-- 제출 후 사진 추가/개별 삭제(행 업데이트) 허용
+create policy "anyone can update"
+  on public.house_models for update
+  to anon, authenticated
+  using (true)
+  with check (true);
+
 -- (선택) 삭제도 허용하려면 주석 해제
 -- create policy "anyone can delete"
 --   on public.house_models for delete
