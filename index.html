@@ -254,6 +254,14 @@
   }
   .pg-add:hover { border-color:var(--brand); background:rgba(37,99,235,.05); }
   .pg-add[disabled] { opacity:.6; cursor:default; }
+  .pg-actions { display:flex; gap:8px; flex-shrink:0; }
+  .pg-dl {
+    font-size:12.5px; font-weight:600; color:var(--ok);
+    border:1px solid #bbf7d0; background:#fff; border-radius:8px;
+    padding:6px 11px; cursor:pointer; white-space:nowrap; transition:all .15s; font-family:inherit;
+  }
+  .pg-dl:hover { border-color:var(--ok); background:rgba(22,163,74,.06); }
+  .pg-dl[disabled] { opacity:.6; cursor:default; }
   .pg-thumbs { display:grid; grid-template-columns:repeat(auto-fill, minmax(72px,1fr)); gap:8px; }
   .pg-thumbs figure {
     margin:0; position:relative; aspect-ratio:1; border-radius:8px; overflow:hidden;
@@ -483,6 +491,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
 (function () {
   "use strict";
@@ -737,6 +746,49 @@
     });
   }
 
+  /* ---------- 사진 전체를 ZIP 한 파일로 저장 ---------- */
+  function sanitizeFileName(s) {
+    return String(s == null ? "model" : s).replace(/[\\\/:*?"<>|]+/g, "_").trim() || "model";
+  }
+
+  function downloadAllPhotos(urls, fileBase, btn) {
+    if (!urls || !urls.length) return;
+    if (!window.JSZip) {
+      alert("다운로드 모듈을 아직 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
+    var orig = btn ? btn.textContent : "";
+    if (btn) { btn.disabled = true; btn.textContent = "저장 중…"; }
+
+    var zip = new JSZip();
+    Promise.all(urls.map(function (url, i) {
+      return fetch(url).then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.blob();
+      }).then(function (blob) {
+        var clean = url.split("?")[0];
+        var ext = clean.indexOf(".") > -1 ? clean.split(".").pop().slice(0, 5) : "jpg";
+        var num = String(i + 1).length < 2 ? "0" + (i + 1) : String(i + 1);
+        zip.file(fileBase + "_" + num + "." + ext, blob);
+      });
+    })).then(function () {
+      return zip.generateAsync({ type: "blob" });
+    }).then(function (content) {
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(content);
+      a.download = fileBase + ".zip";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
+      if (btn) { btn.disabled = false; btn.textContent = orig; }
+    }).catch(function (err) {
+      console.error(err);
+      alert("사진을 한 번에 저장하지 못했습니다.\n" + (err && err.message ? err.message : err));
+      if (btn) { btn.disabled = false; btn.textContent = orig; }
+    });
+  }
+
   /* ---------- 사진 그룹(외관/내부) 렌더 ---------- */
   function buildPhotoGroup(entry, column, prefix, title) {
     var urls = entry[column] || [];
@@ -764,7 +816,23 @@
       addPhotosToEntry(entry, column, prefix, addInput.files, addBtn);
       addInput.value = "";
     });
-    head.appendChild(addBtn);
+
+    var pgActions = document.createElement("div");
+    pgActions.className = "pg-actions";
+    if (urls.length) {
+      var label = prefix === "interior" ? "내부사진" : (prefix === "exterior" ? "외관사진" : "사진");
+      var dlBtn = document.createElement("button");
+      dlBtn.type = "button";
+      dlBtn.className = "pg-dl";
+      dlBtn.textContent = "⬇ 모두 저장";
+      dlBtn.title = label + " 전체를 ZIP 파일로 한 번에 저장";
+      dlBtn.addEventListener("click", function () {
+        downloadAllPhotos(urls, sanitizeFileName(entry.model_name) + "_" + label, dlBtn);
+      });
+      pgActions.appendChild(dlBtn);
+    }
+    pgActions.appendChild(addBtn);
+    head.appendChild(pgActions);
     group.appendChild(head);
     group.appendChild(addInput);
 
