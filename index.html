@@ -423,6 +423,17 @@
         <div class="previews" id="interiorPreviews"></div>
       </div>
 
+      <div class="field">
+        <label class="q">주택 옵션사진</label>
+        <div class="hint">옵션 사진을 여러 장 첨부할 수 있습니다.</div>
+        <button type="button" class="uploader" data-target="option">
+          <span class="ic">🧩</span>
+          <span class="t">탭하여 옵션사진 첨부</span>
+        </button>
+        <input type="file" id="option" class="file-hidden" accept="image/*" multiple>
+        <div class="previews" id="optionPreviews"></div>
+      </div>
+
     </div>
 
     <!-- 추가: 최하단 제출 버튼 -->
@@ -467,6 +478,7 @@
           <th>전시장</th>
           <th>외부사진</th>
           <th>내부사진</th>
+          <th>옵션사진</th>
           <th>주택 스펙</th>
           <th>전시일정</th>
           <th></th>
@@ -505,6 +517,7 @@
 
   var exteriorFiles = [];
   var interiorFiles = [];
+  var optionFiles = [];
 
   var form = document.getElementById("modelForm");
   var toastEl = document.getElementById("toast");
@@ -561,6 +574,7 @@
 
   setupUploader("exterior", "exteriorPreviews", exteriorFiles);
   setupUploader("interior", "interiorPreviews", interiorFiles);
+  setupUploader("option", "optionPreviews", optionFiles);
 
   /* ---------- Supabase: 사진 업로드 → public URL 배열 ---------- */
   function uploadPhotos(items, prefix) {
@@ -671,7 +685,8 @@
 
     Promise.all([
       uploadPhotos(exteriorFiles, "exterior"),
-      uploadPhotos(interiorFiles, "interior")
+      uploadPhotos(interiorFiles, "interior"),
+      uploadPhotos(optionFiles, "option")
     ]).then(function (urls) {
       return sb.from(TABLE).insert({
         hall: hall,
@@ -683,7 +698,8 @@
         spec: spec,
         exhibit_status: exhibitStatus,
         exterior_urls: urls[0],
-        interior_urls: urls[1]
+        interior_urls: urls[1],
+        option_urls: urls[2]
       }).select().single();
     }).then(function (res) {
       if (res.error) throw res.error;
@@ -695,8 +711,10 @@
       form.reset();
       exteriorFiles.length = 0;
       interiorFiles.length = 0;
+      optionFiles.length = 0;
       renderPreviews(document.getElementById("exteriorPreviews"), exteriorFiles);
       renderPreviews(document.getElementById("interiorPreviews"), interiorFiles);
+      renderPreviews(document.getElementById("optionPreviews"), optionFiles);
 
       return renderEntries();
     }).then(function () {
@@ -820,7 +838,7 @@
     var pgActions = document.createElement("div");
     pgActions.className = "pg-actions";
     if (urls.length) {
-      var label = prefix === "interior" ? "내부사진" : (prefix === "exterior" ? "외관사진" : "사진");
+      var label = prefix === "interior" ? "내부사진" : (prefix === "exterior" ? "외관사진" : (prefix === "option" ? "옵션사진" : "사진"));
       var dlBtn = document.createElement("button");
       dlBtn.type = "button";
       dlBtn.className = "pg-dl";
@@ -1041,7 +1059,7 @@
     }).catch(function (err) {
       console.error(err);
       document.getElementById("entries").innerHTML =
-        '<tr><td colspan="9"><div class="list-empty">목록을 불러오지 못했습니다: ' +
+        '<tr><td colspan="10"><div class="list-empty">목록을 불러오지 못했습니다: ' +
         escapeHtml(err.message || String(err)) + '</div></td></tr>';
     });
   }
@@ -1054,7 +1072,7 @@
     box.innerHTML = "";
 
       if (!list.length) {
-        box.innerHTML = '<tr><td colspan="9"><div class="list-empty">' +
+        box.innerHTML = '<tr><td colspan="10"><div class="list-empty">' +
           (all.length ? "검색/필터 조건에 맞는 모델이 없습니다." : "아직 제출된 모델이 없습니다.") +
           '</div></td></tr>';
         return;
@@ -1099,6 +1117,9 @@
         var tdInt = document.createElement("td");
         photoCell(tdInt, entry.interior_urls, "내부사진");
         tr.appendChild(tdInt);
+        var tdOpt = document.createElement("td");
+        photoCell(tdOpt, entry.option_urls, "옵션사진");
+        tr.appendChild(tdOpt);
 
         // 주택 스펙
         var tdSpec = document.createElement("td");
@@ -1134,12 +1155,13 @@
         detail.className = "detail-row";
         detail.style.display = "none";
         var detailTd = document.createElement("td");
-        detailTd.colSpan = 9;
+        detailTd.colSpan = 10;
         var detailBox = document.createElement("div");
         detailBox.className = "detail-box";
         detailBox.appendChild(buildEditForm(entry));
         detailBox.appendChild(buildPhotoGroup(entry, "exterior_urls", "exterior", "🏠 외관사진"));
         detailBox.appendChild(buildPhotoGroup(entry, "interior_urls", "interior", "🛋️ 내부사진"));
+        detailBox.appendChild(buildPhotoGroup(entry, "option_urls", "option", "🧩 옵션사진"));
 
         var actions = document.createElement("div");
         actions.className = "detail-actions";
