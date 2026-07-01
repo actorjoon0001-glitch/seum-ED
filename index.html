@@ -209,7 +209,7 @@
   table.models tbody tr.row-main:hover { background:#f9fafb; }
   table.models td.model-cell { white-space:normal; min-width:150px; }
   table.models td.model-cell strong { display:block; font-size:14px; }
-  table.models td.spec-cell { white-space:normal; max-width:240px; color:#374151; font-size:12.5px; }
+  table.models td.spec-cell { white-space:normal; max-width:200px; color:#374151; font-size:12.5px; }
   table.models .mini-type { display:inline-block; background:#eef2ff; color:var(--brand-dark); font-size:11px; font-weight:600; padding:1px 7px; border-radius:5px; margin-top:3px; }
   table.models .meta-sub { display:block; color:var(--muted); font-size:11.5px; margin-top:3px; }
   .photo-cell { cursor:pointer; }
@@ -223,6 +223,13 @@
   .status-pill::before { content:""; width:7px; height:7px; border-radius:50%; background:currentColor; }
   .manage-btn { color:var(--brand-dark); border:1px solid var(--border); background:#fff; border-radius:7px; padding:5px 10px; font-size:12.5px; cursor:pointer; font-family:inherit; white-space:nowrap; }
   .manage-btn:hover { border-color:var(--brand); background:rgba(37,99,235,.05); }
+  /* 관리 열 오른쪽 고정 — 가로 스크롤 시에도 항상 보이도록 (열이 많아 표가 넘칠 때 잘림 방지) */
+  table.models th.manage-col, table.models td.manage-col {
+    position:sticky; right:0; z-index:1; background:#fff;
+    box-shadow:-6px 0 8px -6px rgba(0,0,0,.12);
+  }
+  table.models thead th.manage-col { background:#f9fafb; z-index:2; }
+  table.models tbody tr.row-main:hover td.manage-col { background:#f9fafb; }
   table.models tr.detail-row > td { background:#fbfcfe; padding:0; }
   .detail-box { padding:16px 14px; }
   /* 관리 패널 내 정보 수정 폼 */
@@ -502,7 +509,7 @@
           <th>옵션사진</th>
           <th>주택 스펙</th>
           <th>전시일정</th>
-          <th></th>
+          <th class="manage-col">관리</th>
         </tr>
       </thead>
       <tbody id="entries"></tbody>
@@ -1287,6 +1294,7 @@
 
         // 관리(사진 추가/삭제, 삭제)
         var tdManage = document.createElement("td");
+        tdManage.className = "manage-col";
         var manageBtn = document.createElement("button");
         manageBtn.type = "button";
         manageBtn.className = "manage-btn";
