@@ -276,6 +276,19 @@
   }
   .pg-empty { font-size:13px; color:var(--muted); padding:4px 0; }
 
+  /* 사진 그룹 간 드래그 이동 */
+  .pg-thumbs figure { touch-action: none; }
+  .pg-thumbs figure.pg-dragging { opacity:.35; }
+  .photo-group.pg-drop { outline:2px dashed var(--brand); outline-offset:4px; border-radius:10px; background:rgba(37,99,235,.05); }
+  .pg-ghost {
+    position:fixed; z-index:300; width:72px; height:72px; margin:-36px 0 0 -36px;
+    border-radius:8px; overflow:hidden; border:2px solid var(--brand); background:#fff;
+    box-shadow:0 8px 24px rgba(0,0,0,.3); opacity:.92; pointer-events:none;
+  }
+  .pg-ghost img { width:100%; height:100%; object-fit:cover; display:block; }
+  body.pg-dragging-active { user-select:none; -webkit-user-select:none; }
+  .pg-hint { font-size:11.5px; color:var(--muted); margin-top:8px; }
+
   /* 라이트박스(사진 크게 보기) */
   #lightbox {
     position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:200;
@@ -807,12 +820,118 @@
     });
   }
 
-  /* ---------- 사진 그룹(외관/내부) 렌더 ---------- */
+  /* ---------- 사진을 그룹 간 이동 (예: 내부사진 → 옵션사진) ---------- */
+  function movePhoto(entry, fromCol, toCol, url) {
+    if (fromCol === toCol) return;
+    var fromArr = (entry[fromCol] || []).slice();
+    var i = fromArr.indexOf(url);
+    if (i === -1) return;
+    fromArr.splice(i, 1);
+    var toArr = (entry[toCol] || []).concat([url]);
+    var patch = {};
+    patch[fromCol] = fromArr;
+    patch[toCol] = toArr;
+    sb.from(TABLE).update(patch).eq("id", entry.id).then(function (res) {
+      if (res.error) {
+        alert("사진 이동 실패: " + res.error.message + "\n(update 정책을 확인해 주세요. schema.sql 참고)");
+        return;
+      }
+      entry[fromCol] = fromArr;
+      entry[toCol] = toArr;
+      reopenDetailId = entry.id;   // 이동 후 관리 패널을 다시 펼쳐 둠
+      renderEntries();
+    });
+  }
+
+  /* ---------- 썸네일 상호작용: 탭=크게보기 / 끌기=다른 그룹으로 이동 (마우스·터치 공용) ---------- */
+  var DRAG_THRESHOLD = 6;
+  function setupThumbInteraction(fig, entry, column, url, urls, idx) {
+    var startX = 0, startY = 0, lastX = 0, lastY = 0;
+    var dragging = false, ghost = null, curTarget = null, scrollTimer = null;
+
+    function autoScroll() {
+      var EDGE = 70, SPEED = 16, dir = 0;
+      if (lastY < EDGE) dir = -SPEED;
+      else if (lastY > window.innerHeight - EDGE) dir = SPEED;
+      if (dir) { window.scrollBy(0, dir); highlight(lastX, lastY); }
+    }
+
+    function targetGroupAt(x, y) {
+      if (ghost) ghost.style.display = "none";
+      var el = document.elementFromPoint(x, y);
+      if (ghost) ghost.style.display = "";
+      var g = el && el.closest ? el.closest(".photo-group") : null;
+      if (!g) return null;
+      if (g.getAttribute("data-entry-id") !== String(entry.id)) return null;
+      if (g.getAttribute("data-column") === column) return null;
+      return g;
+    }
+    function highlight(x, y) {
+      var g = targetGroupAt(x, y);
+      if (g === curTarget) return;
+      if (curTarget) curTarget.classList.remove("pg-drop");
+      curTarget = g;
+      if (curTarget) curTarget.classList.add("pg-drop");
+    }
+    function startDrag() {
+      dragging = true;
+      fig.classList.add("pg-dragging");
+      document.body.classList.add("pg-dragging-active");
+      ghost = document.createElement("div");
+      ghost.className = "pg-ghost";
+      var gimg = document.createElement("img");
+      gimg.src = url;
+      ghost.appendChild(gimg);
+      document.body.appendChild(ghost);
+      scrollTimer = setInterval(autoScroll, 16);
+    }
+    function cleanup() {
+      dragging = false;
+      fig.classList.remove("pg-dragging");
+      document.body.classList.remove("pg-dragging-active");
+      if (scrollTimer) { clearInterval(scrollTimer); scrollTimer = null; }
+      if (ghost) { ghost.remove(); ghost = null; }
+      if (curTarget) { curTarget.classList.remove("pg-drop"); curTarget = null; }
+    }
+    function onMove(e) {
+      var dx = e.clientX - startX, dy = e.clientY - startY;
+      if (!dragging) {
+        if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+        startDrag();
+      }
+      lastX = e.clientX; lastY = e.clientY;
+      ghost.style.left = e.clientX + "px";
+      ghost.style.top = e.clientY + "px";
+      highlight(e.clientX, e.clientY);
+    }
+    function onUp(e) {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+      if (!dragging) { openLightbox(urls, idx); return; }   // 움직임 없으면 탭 → 크게보기
+      var g = targetGroupAt(e.clientX, e.clientY);
+      cleanup();
+      if (g) movePhoto(entry, column, g.getAttribute("data-column"), url);
+    }
+
+    fig.addEventListener("pointerdown", function (e) {
+      if (e.button != null && e.button > 0) return;            // 좌클릭/터치만
+      if (e.target.closest && e.target.closest(".del")) return; // 삭제 버튼은 제외
+      startX = e.clientX; startY = e.clientY; dragging = false;
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp);
+      document.addEventListener("pointercancel", onUp);
+    });
+  }
+
+  /* ---------- 사진 그룹(외관/내부/옵션) 렌더 ---------- */
   function buildPhotoGroup(entry, column, prefix, title) {
     var urls = entry[column] || [];
 
     var group = document.createElement("div");
     group.className = "photo-group";
+    group.setAttribute("data-column", column);
+    group.setAttribute("data-entry-id", String(entry.id));
 
     var head = document.createElement("div");
     head.className = "pg-head";
@@ -866,12 +985,14 @@
     thumbs.className = "pg-thumbs";
     urls.forEach(function (url, idx) {
       var fig = document.createElement("figure");
+      fig.title = "눌러서 크게 보기 · 끌어서 다른 사진 그룹으로 이동";
 
       var img = document.createElement("img");
       img.src = url;
       img.loading = "lazy";
       img.alt = "";
-      img.addEventListener("click", function () { openLightbox(urls, idx); });
+      img.draggable = false;
+      setupThumbInteraction(fig, entry, column, url, urls, idx);
 
       var del = document.createElement("button");
       del.type = "button";
@@ -888,6 +1009,12 @@
       thumbs.appendChild(fig);
     });
     group.appendChild(thumbs);
+
+    var hint = document.createElement("div");
+    hint.className = "pg-hint";
+    hint.textContent = "💡 사진을 끌어서 다른 그룹(외관·내부·옵션)으로 옮길 수 있어요.";
+    group.appendChild(hint);
+
     return group;
   }
 
@@ -1051,6 +1178,7 @@
 
   /* ---------- 취합 리스트 렌더 ---------- */
   var entriesCache = [];
+  var reopenDetailId = null;
 
   function renderEntries() {
     return fetchEntries().then(function (all) {
@@ -1190,7 +1318,14 @@
           detail.style.display = open ? "none" : "table-row";
           manageBtn.textContent = open ? "관리 ▾" : "닫기 ▴";
         });
+
+        if (reopenDetailId != null && String(entry.id) === String(reopenDetailId)) {
+          detail.style.display = "table-row";
+          manageBtn.textContent = "닫기 ▴";
+        }
       });
+
+      reopenDetailId = null;
   }
 
   /* 검색/필터 이벤트 (재조회 없이 캐시 기준 필터) */
