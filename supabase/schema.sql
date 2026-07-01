@@ -18,6 +18,7 @@ create table if not exists public.house_models (
                   check (exhibit_status in ('전시중','전시종료')),  -- 전시일정(상태)
   exterior_urls jsonb       not null default '[]',    -- 외관사진 URL 배열
   interior_urls jsonb       not null default '[]',    -- 내부사진 URL 배열
+  option_urls   jsonb       not null default '[]',    -- 옵션사진 URL 배열
   submitted_at  timestamptz not null default now(),   -- 제출일시(자동)
   created_at    timestamptz not null default now()
 );
@@ -94,3 +95,11 @@ alter table public.house_models
 alter table public.house_models
   add constraint house_models_exhibit_status_check
   check (exhibit_status in ('전시중','전시종료'));
+
+-- =========================================================
+-- 마이그레이션: 옵션사진(option_urls) 컬럼 추가
+-- 이미 테이블이 있는 경우 아래를 SQL Editor 에서 한 번 실행해 주세요.
+-- (외관/내부와 동일한 jsonb URL 배열 규칙)
+-- =========================================================
+alter table public.house_models
+  add column if not exists option_urls jsonb not null default '[]'::jsonb;
