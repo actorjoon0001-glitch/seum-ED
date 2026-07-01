@@ -391,6 +391,13 @@
         <div class="err-msg">주택 평형을 입력해 주세요.</div>
       </div>
 
+      <!-- 추가: 주택 높이 (고객 카탈로그 표시용) -->
+      <div class="field">
+        <label class="q" for="height">주택 높이</label>
+        <div class="hint">고객 카탈로그에 표시됩니다. 단위(m)까지 적어 주세요.</div>
+        <input type="text" id="height" name="height" placeholder="예) 3.2m" />
+      </div>
+
       <div class="field">
         <label class="q" for="price">주택가격 <span class="req">*</span></label>
         <input type="text" id="price" name="price" placeholder="예) 3억" required />
@@ -487,6 +494,7 @@
         <tr>
           <th>모델</th>
           <th>평형</th>
+          <th>높이</th>
           <th>가격</th>
           <th>전시장</th>
           <th>외부사진</th>
@@ -690,6 +698,7 @@
     var houseType = form.querySelector('input[name="houseType"]:checked').value;
     var modelName = document.getElementById("modelName").value.trim();
     var pyeongVal = document.getElementById("pyeong").value;
+    var height = document.getElementById("height").value.trim();
     var price = document.getElementById("price").value.trim();
     var spec = document.getElementById("spec").value.trim();
     var exhibitStatus = (form.querySelector('input[name="exhibitStatus"]:checked') || {}).value || "전시중";
@@ -707,6 +716,7 @@
         house_type: houseType,
         model_name: modelName,
         pyeong: pyeongVal === "" ? null : Number(pyeongVal),
+        height: height,
         price: price,
         spec: spec,
         exhibit_status: exhibitStatus,
@@ -1068,6 +1078,7 @@
     var typeSel  = makeSelect(TYPE_OPTS, entry.house_type);
     var nameInp  = makeInput("text", entry.model_name);
     var pyInp    = makeInput("number", entry.pyeong);
+    var heightInp = makeInput("text", entry.height);
     var priceInp = makeInput("text", entry.price);
     var statusSel = makeSelect(STATUS_OPTS, entry.exhibit_status || "전시중");
 
@@ -1076,6 +1087,7 @@
     grid.appendChild(makeField("주택 유형", typeSel));
     grid.appendChild(makeField("주택 모델명", nameInp));
     grid.appendChild(makeField("주택 평형(평)", pyInp));
+    grid.appendChild(makeField("주택 높이", heightInp));
     grid.appendChild(makeField("주택가격", priceInp));
     grid.appendChild(makeField("전시일정", statusSel));
     box.appendChild(grid);
@@ -1107,6 +1119,7 @@
         house_type: typeSel.value,
         model_name: modelName,
         pyeong: pyInp.value === "" ? null : Number(pyInp.value),
+        height: heightInp.value.trim(),
         price: price,
         spec: specInp.value.trim(),
         exhibit_status: statusSel.value
@@ -1187,7 +1200,7 @@
     }).catch(function (err) {
       console.error(err);
       document.getElementById("entries").innerHTML =
-        '<tr><td colspan="10"><div class="list-empty">목록을 불러오지 못했습니다: ' +
+        '<tr><td colspan="11"><div class="list-empty">목록을 불러오지 못했습니다: ' +
         escapeHtml(err.message || String(err)) + '</div></td></tr>';
     });
   }
@@ -1200,7 +1213,7 @@
     box.innerHTML = "";
 
       if (!list.length) {
-        box.innerHTML = '<tr><td colspan="10"><div class="list-empty">' +
+        box.innerHTML = '<tr><td colspan="11"><div class="list-empty">' +
           (all.length ? "검색/필터 조건에 맞는 모델이 없습니다." : "아직 제출된 모델이 없습니다.") +
           '</div></td></tr>';
         return;
@@ -1227,6 +1240,11 @@
         var tdPy = document.createElement("td");
         tdPy.textContent = (entry.pyeong != null ? entry.pyeong + "평" : "-");
         tr.appendChild(tdPy);
+
+        // 높이
+        var tdHeight = document.createElement("td");
+        tdHeight.textContent = entry.height || "-";
+        tr.appendChild(tdHeight);
 
         // 가격
         var tdPrice = document.createElement("td");
@@ -1283,7 +1301,7 @@
         detail.className = "detail-row";
         detail.style.display = "none";
         var detailTd = document.createElement("td");
-        detailTd.colSpan = 10;
+        detailTd.colSpan = 11;
         var detailBox = document.createElement("div");
         detailBox.className = "detail-box";
         detailBox.appendChild(buildEditForm(entry));
