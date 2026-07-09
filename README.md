@@ -12,7 +12,8 @@
 - 담당자 이름
 - **주택 유형 (이동식주택 / 체류형쉼터 / 농막 / 컨테이너 / 기타)** — 선택형
 - 주택 모델명
-- 주택 평형
+- 주택 평형 (다락 제외한 주택 1층 평형)
+- **다락 평형** — 다락이 있는 모델만 별도 입력 (선택)
 - **주택 높이** — 고객 카탈로그 표시용 (예: "3.2m")
 - 주택가격
 - **주택 스펙** — 구조, 방/욕실 수, 자재·옵션 등 자유 입력
@@ -46,4 +47,5 @@
 - 취합 목록 **삭제** 기능을 쓰려면 `schema.sql`의 delete 정책 주석을 해제해 실행하세요.
 - **주택 스펙 · 전시일정 항목**을 쓰려면 `house_models` 테이블에 `spec`, `exhibit_status` 컬럼이 있어야 합니다. 기존 테이블이라면 `schema.sql` 하단의 마이그레이션(`add column if not exists …`)을 SQL Editor에서 한 번 실행해 주세요. (실행 전 제출 시 컬럼 없음 오류가 날 수 있습니다.)
 - **주택 높이 항목**을 쓰려면 `house_models` 테이블에 `height`(text) 컬럼이 있어야 합니다. 기존 테이블이라면 `schema.sql` 하단의 높이 마이그레이션(`add column if not exists height text`)을 SQL Editor에서 한 번 실행해 주세요. (고객 카탈로그(seum-catalog-online)에서 이 `height` 값을 읽어 표시합니다.)
+- **다락 평형 항목**을 쓰려면 `house_models` 테이블에 `loft_pyeong`(numeric) 컬럼이 있어야 합니다. 기존 테이블이라면 `schema.sql` 하단의 다락 마이그레이션(`add column if not exists loft_pyeong numeric`)을 SQL Editor에서 한 번 실행해 주세요. (실행 전 제출 시 컬럼 없음 오류가 날 수 있습니다.)
 - **주택 옵션사진**을 쓰려면 `house_models` 테이블에 `option_urls`(jsonb) 컬럼이 있어야 합니다. 기존 테이블이라면 `schema.sql` 하단의 옵션사진 마이그레이션(`add column if not exists option_urls …`)을 SQL Editor에서 한 번 실행해 주세요.

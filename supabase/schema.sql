@@ -11,7 +11,8 @@ create table if not exists public.house_models (
   house_type    text        not null
                   check (house_type in ('이동식주택','체류형쉼터','농막','컨테이너','기타')),  -- 주택 유형(선택형)
   model_name    text        not null,                 -- 주택 모델명
-  pyeong        numeric,                              -- 주택 평형
+  pyeong        numeric,                              -- 주택 평형 (다락 제외)
+  loft_pyeong   numeric,                              -- 다락 평형 (다락 있는 모델만)
   height        text,                                 -- 주택 높이 (예: "3.2m", 고객 카탈로그 표시용)
   price         text,                                 -- 주택가격 (예: "3억")
   spec          text,                                 -- 주택 스펙 (구조/방·욕실/옵션 등)
@@ -112,3 +113,11 @@ alter table public.house_models
 -- =========================================================
 alter table public.house_models
   add column if not exists height text;
+
+-- =========================================================
+-- 마이그레이션: 다락 평형(loft_pyeong) 컬럼 추가
+-- (다락이 있는 모델의 다락 평수를 주택 평형과 별도로 저장)
+-- 이미 테이블이 있는 경우 아래를 SQL Editor 에서 한 번 실행해 주세요.
+-- =========================================================
+alter table public.house_models
+  add column if not exists loft_pyeong numeric;
