@@ -391,11 +391,22 @@
 
       <div class="field">
         <label class="q" for="pyeong">주택 평형 <span class="req">*</span></label>
+        <div class="hint">다락은 제외한 <b>주택(1층) 평형</b>만 입력해 주세요. 다락은 아래에 따로 적습니다.</div>
         <div class="suffix-wrap">
           <input type="number" id="pyeong" name="pyeong" placeholder="예) 30" min="0" step="0.1" required />
           <span class="suffix">평</span>
         </div>
         <div class="err-msg">주택 평형을 입력해 주세요.</div>
+      </div>
+
+      <!-- 추가: 다락 평형 (다락이 있는 모델만) -->
+      <div class="field">
+        <label class="q" for="loftPyeong">다락 평형</label>
+        <div class="hint">다락이 있는 모델만 다락 평수를 입력해 주세요. 없으면 비워 두시면 됩니다.</div>
+        <div class="suffix-wrap">
+          <input type="number" id="loftPyeong" name="loftPyeong" placeholder="예) 5" min="0" step="0.1" />
+          <span class="suffix">평</span>
+        </div>
       </div>
 
       <!-- 추가: 주택 높이 (고객 카탈로그 표시용) -->
@@ -705,6 +716,7 @@
     var houseType = form.querySelector('input[name="houseType"]:checked').value;
     var modelName = document.getElementById("modelName").value.trim();
     var pyeongVal = document.getElementById("pyeong").value;
+    var loftPyeongVal = document.getElementById("loftPyeong").value;
     var height = document.getElementById("height").value.trim();
     var price = document.getElementById("price").value.trim();
     var spec = document.getElementById("spec").value.trim();
@@ -723,6 +735,7 @@
         house_type: houseType,
         model_name: modelName,
         pyeong: pyeongVal === "" ? null : Number(pyeongVal),
+        loft_pyeong: loftPyeongVal === "" ? null : Number(loftPyeongVal),
         height: height,
         price: price,
         spec: spec,
@@ -1085,6 +1098,7 @@
     var typeSel  = makeSelect(TYPE_OPTS, entry.house_type);
     var nameInp  = makeInput("text", entry.model_name);
     var pyInp    = makeInput("number", entry.pyeong);
+    var loftInp  = makeInput("number", entry.loft_pyeong);
     var heightInp = makeInput("text", entry.height);
     var priceInp = makeInput("text", entry.price);
     var statusSel = makeSelect(STATUS_OPTS, entry.exhibit_status || "전시중");
@@ -1093,7 +1107,8 @@
     grid.appendChild(makeField("담당자", mgrInp));
     grid.appendChild(makeField("주택 유형", typeSel));
     grid.appendChild(makeField("주택 모델명", nameInp));
-    grid.appendChild(makeField("주택 평형(평)", pyInp));
+    grid.appendChild(makeField("주택 평형(평, 다락 제외)", pyInp));
+    grid.appendChild(makeField("다락 평형(평)", loftInp));
     grid.appendChild(makeField("주택 높이", heightInp));
     grid.appendChild(makeField("주택가격", priceInp));
     grid.appendChild(makeField("전시일정", statusSel));
@@ -1126,6 +1141,7 @@
         house_type: typeSel.value,
         model_name: modelName,
         pyeong: pyInp.value === "" ? null : Number(pyInp.value),
+        loft_pyeong: loftInp.value === "" ? null : Number(loftInp.value),
         height: heightInp.value.trim(),
         price: price,
         spec: specInp.value.trim(),
@@ -1243,9 +1259,15 @@
             ' · 👤 ' + escapeHtml(entry.manager || "-") + '</span>';
         tr.appendChild(tdModel);
 
-        // 평형
+        // 평형 (+ 다락 평형)
         var tdPy = document.createElement("td");
-        tdPy.textContent = (entry.pyeong != null ? entry.pyeong + "평" : "-");
+        var pyText = (entry.pyeong != null ? entry.pyeong + "평" : "-");
+        if (entry.loft_pyeong != null) {
+          tdPy.innerHTML = escapeHtml(pyText) +
+            '<span class="meta-sub">다락 ' + escapeHtml(String(entry.loft_pyeong)) + '평</span>';
+        } else {
+          tdPy.textContent = pyText;
+        }
         tr.appendChild(tdPy);
 
         // 높이
